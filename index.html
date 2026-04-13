@@ -330,14 +330,23 @@
   @media (max-width: 900px) {
     nav { padding: 0 20px; }
     .nav-links { display: none; }
-    .hero-content { grid-template-columns: 1fr; gap: 40px; }
-    .hero-right { display: none; }
+    .hero-content { grid-template-columns: 1fr; gap: 32px; display: flex; flex-direction: column; }
+    .hero-left { order: 2; }
+    .hero-right { order: 1; display: block; }
+    .hero-headline { font-size: clamp(36px, 10vw, 56px); }
+    .hero-sub { font-size: 16px; margin: 16px 0 24px; }
+    .hero-ctas { margin-bottom: 24px; }
+    .hero-stats { gap: 24px; }
+    .stat-num { font-size: 28px; }
     .steps, .products-grid { grid-template-columns: 1fr; }
     .about-grid, .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+    .bundle-callout { grid-template-columns: 1fr; gap: 24px; padding: 28px 20px; }
     section { padding: 60px 20px; }
-    .hero { padding: 100px 20px 60px; }
+    .hero { padding: 80px 20px 48px; }
     footer { flex-direction: column; text-align: center; }
     .popup-header, .popup-body { padding: 24px; }
+    .mini-row { grid-template-columns: 1fr; }
+    .result-grid { grid-template-columns: 1fr 1fr; }
   }
 </style>
 </head>
