@@ -1134,7 +1134,7 @@
     };
     const est = calcEstimates(data.goal, data.participants);
     if (CONFIG.CALC_WEBHOOK_URL) {
-      try { fetch(CONFIG.CALC_WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...data,...est}), mode:'no-cors' }); }
+      try { fetch(CONFIG.CALC_WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...data,...est}) }); }
       catch(e) { console.warn('Calc webhook failed', e); }
     }
     document.getElementById('hcResultEmoji').textContent = SPORT_EMOJI[data.sport] || '🏆';
