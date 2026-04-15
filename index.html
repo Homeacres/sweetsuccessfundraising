@@ -348,6 +348,27 @@
     .mini-row { grid-template-columns: 1fr; }
     .result-grid { grid-template-columns: 1fr 1fr; }
   }
+
+  /* PHONE — under 480px */
+  @media (max-width: 480px) {
+    .hero { padding: 72px 16px 40px; }
+    .hero-headline { font-size: clamp(32px, 9vw, 44px); }
+    .hero-sub { font-size: 15px; }
+    .hero-ctas { flex-direction: column; }
+    .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+    .hero-stats { flex-direction: column; gap: 12px; }
+    .calc-card-body { padding: 16px; }
+    .result-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .result-card-val { font-size: 22px; }
+    section { padding: 48px 16px; }
+    .section-title { font-size: clamp(28px, 8vw, 40px); }
+    .bundle-callout { padding: 24px 16px; }
+    .bundle-tiers { flex-wrap: wrap; }
+    .step { padding: 32px 24px; }
+    .product-body { padding: 20px; }
+    .about-right { padding: 28px 20px; }
+    footer { padding: 28px 16px; }
+  }
 </style>
 </head>
 <body>
@@ -1133,9 +1154,14 @@
       source: 'homepage_hero',
     };
     const est = calcEstimates(data.goal, data.participants);
+    // Fire webhook — fire and forget, never block the UI
     if (CONFIG.CALC_WEBHOOK_URL) {
-      try { fetch(CONFIG.CALC_WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...data,...est}) }); }
-      catch(e) { console.warn('Calc webhook failed', e); }
+      fetch(CONFIG.CALC_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({...data, ...est}),
+        mode: 'no-cors',
+      }).catch(() => {});
     }
     document.getElementById('hcResultEmoji').textContent = SPORT_EMOJI[data.sport] || '🏆';
     document.getElementById('hcResultName').textContent = `Nice work, ${data.firstName}!`;
