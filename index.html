@@ -1154,13 +1154,12 @@
       source: 'homepage_hero',
     };
     const est = calcEstimates(data.goal, data.participants);
-    // Fire webhook — fire and forget, never block the UI
+    // Fire webhook — send JSON to Attio, handle CORS gracefully
     if (CONFIG.CALC_WEBHOOK_URL) {
       fetch(CONFIG.CALC_WEBHOOK_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({...data, ...est}),
-        mode: 'no-cors',
       }).catch(() => {});
     }
     document.getElementById('hcResultEmoji').textContent = SPORT_EMOJI[data.sport] || '🏆';
