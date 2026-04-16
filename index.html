@@ -997,7 +997,7 @@
 
 <script>
   const CONFIG = {
-    CALC_WEBHOOK_URL:  'https://hook.us2.make.com/zyca248lifn3ckumpgd7o6jpx3rtft', // Make.com proxy → Attio
+    CALC_WEBHOOK_URL:  'https://hook.us2.make.com/zyca248lifn3ckumpgd7o6jpx3rtfby7', // Make.com proxy → Attio
     APPLY_WEBHOOK_URL: '', // Make.com Apply popup webhook URL
     SYF_PAGE_URL: 'start-your-fundraiser.html',
   };
@@ -1176,7 +1176,7 @@
       const payload = JSON.stringify({...data, ...est});
       // Use sendBeacon for reliable cross-origin delivery
       if (navigator.sendBeacon) {
-        const blob = new Blob([payload], { type: 'application/json' });
+        const blob = new Blob([payload], { type: 'text/plain' });
         navigator.sendBeacon(CONFIG.CALC_WEBHOOK_URL, blob);
       } else {
         fetch(CONFIG.CALC_WEBHOOK_URL, {
