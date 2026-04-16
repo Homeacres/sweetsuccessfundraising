@@ -997,7 +997,7 @@
 
 <script>
   const CONFIG = {
-    CALC_WEBHOOK_URL:  'https://hook.us2.make.com/zyca248lfn3ckumpgd7o6jpx3rfft', // Make.com proxy → Attio
+    CALC_WEBHOOK_URL:  'https://hook.us2.make.com/zyca248lifn3ckumpgd7o6jpx3rtft', // Make.com proxy → Attio
     APPLY_WEBHOOK_URL: '', // Make.com Apply popup webhook URL
     SYF_PAGE_URL: 'start-your-fundraiser.html',
   };
@@ -1097,7 +1097,7 @@
       source: 'apply_popup',
     };
     if (CONFIG.APPLY_WEBHOOK_URL) {
-      try { fetch(CONFIG.APPLY_WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data), mode:'no-cors' }); }
+      try { fetch(CONFIG.APPLY_WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(data) }); }
       catch(e) { console.warn('Apply webhook failed', e); }
     }
     document.getElementById('popupFormWrap').style.display = 'none';
