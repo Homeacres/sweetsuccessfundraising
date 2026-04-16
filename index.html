@@ -596,7 +596,7 @@
               </div>
               <div>
                 <label class="mini-label">Postal Code</label>
-                <input class="mini-input" id="hc-postalCode" type="text" placeholder="T0M 1X0" maxlength="7" autocomplete="postal-code">
+                <input class="mini-input" id="hc-postalCode" type="text" placeholder="T0M 1X0 (Alberta)" maxlength="7" autocomplete="postal-code">
               </div>
             </div>
             <div class="mini-field">
@@ -997,7 +997,7 @@
 
 <script>
   const CONFIG = {
-    CALC_WEBHOOK_URL:  'https://hooks.attio.com/w/1cc3b750-9b25-417f-821b-57ef54e3add4/2085c470-6667-4e01-bb27-23d8e08cf174', // Attio Flow 1 webhook
+    CALC_WEBHOOK_URL:  'https://hook.us2.make.com/zyca248lfn3ckumpgd7o6jpx3rfft', // Make.com proxy → Attio
     APPLY_WEBHOOK_URL: '', // Make.com Apply popup webhook URL
     SYF_PAGE_URL: 'start-your-fundraiser.html',
   };
@@ -1116,21 +1116,38 @@
 
   function validateHeroCalc() {
     const fields = [
-      { id: 'hc-firstName',    check: v => v.trim().length > 0 },
-      { id: 'hc-lastName',     check: v => v.trim().length > 0 },
-      { id: 'hc-email',        check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
-      { id: 'hc-postalCode',   check: v => v.trim().length >= 3 },
-      { id: 'hc-teamName',     check: v => v.trim().length > 0 },
-      { id: 'hc-sport',        check: v => v !== '' },
-      { id: 'hc-participants', check: v => parseInt(v) > 0 },
-      { id: 'hc-goal',         check: v => parseFloat(v) >= 100 },
+      { id: 'hc-firstName',    check: v => v.trim().length > 0,                          msg: 'Please enter your first name.' },
+      { id: 'hc-lastName',     check: v => v.trim().length > 0,                          msg: 'Please enter your last name.' },
+      { id: 'hc-email',        check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),        msg: 'Please enter a valid email address.' },
+      { id: 'hc-postalCode',   check: v => /^[Tt]/.test(v.trim()),                       msg: 'We currently serve Alberta only (postal codes starting with T).' },
+      { id: 'hc-teamName',     check: v => v.trim().length > 0,                          msg: 'Please enter your club or team name.' },
+      { id: 'hc-sport',        check: v => v !== '',                                     msg: 'Please select your sport or activity.' },
+      { id: 'hc-participants', check: v => parseInt(v) > 0,                              msg: 'Please enter number of participants.' },
+      { id: 'hc-goal',         check: v => parseFloat(v) >= 100,                         msg: 'Please enter a fundraising goal of at least $100.' },
     ];
     let valid = true;
+    // Remove any existing error messages first
+    document.querySelectorAll('.hc-field-error').forEach(el => el.remove());
     fields.forEach(f => {
       const el = document.getElementById(f.id);
-      if (!f.check(el.value)) { el.classList.add('invalid'); valid = false; }
-      else el.classList.remove('invalid');
+      if (!f.check(el.value)) {
+        el.classList.add('invalid');
+        // Add error message below field if not already there
+        const err = document.createElement('div');
+        err.className = 'hc-field-error';
+        err.style.cssText = 'color:#ef5350;font-size:11px;margin-top:4px;font-weight:500;';
+        err.textContent = f.msg;
+        el.parentNode.insertBefore(err, el.nextSibling);
+        valid = false;
+      } else {
+        el.classList.remove('invalid');
+      }
     });
+    if (!valid) {
+      // Scroll to first invalid field
+      const firstInvalid = document.querySelector('.mini-input.invalid, .mini-select.invalid');
+      if (firstInvalid) firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
     return valid;
   }
 
@@ -1154,13 +1171,20 @@
       source: 'homepage_hero',
     };
     const est = calcEstimates(data.goal, data.participants);
-    // Fire webhook — send JSON to Attio, handle CORS gracefully
+    // Fire webhook to Attio
     if (CONFIG.CALC_WEBHOOK_URL) {
-      fetch(CONFIG.CALC_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({...data, ...est}),
-      }).catch(() => {});
+      const payload = JSON.stringify({...data, ...est});
+      // Use sendBeacon for reliable cross-origin delivery
+      if (navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon(CONFIG.CALC_WEBHOOK_URL, blob);
+      } else {
+        fetch(CONFIG.CALC_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: payload,
+        }).catch(() => {});
+      }
     }
     document.getElementById('hcResultEmoji').textContent = SPORT_EMOJI[data.sport] || '🏆';
     document.getElementById('hcResultName').textContent = `Nice work, ${data.firstName}!`;
@@ -1175,7 +1199,13 @@
     document.getElementById('calcResults').classList.add('visible');
     btn.classList.remove('loading');
   }
-  document.querySelectorAll('.mini-input, .mini-select').forEach(el => el.addEventListener('input', () => el.classList.remove('invalid')));
+  document.querySelectorAll('.mini-input, .mini-select').forEach(el => {
+    el.addEventListener('input', () => {
+      el.classList.remove('invalid');
+      const err = el.parentNode.querySelector('.hc-field-error');
+      if (err) err.remove();
+    });
+  });
 </script>
 </body>
 </html>
