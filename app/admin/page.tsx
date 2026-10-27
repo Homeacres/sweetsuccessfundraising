@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { isAdminRequest } from "@/lib/admin-auth";
+import { formatUserDate } from "@/lib/dates";
 import { formatCad } from "@/lib/money";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -33,7 +34,7 @@ export default async function AdminHome() {
                   <div className="muted">{campaign.sport}{campaign.team_slug ? ` · /t/${campaign.team_slug}` : ""}</div>
                 </td>
                 <td>{campaign.status}</td>
-                <td>{campaign.start_date || "—"} → {campaign.end_date || "—"}</td>
+                <td>{formatUserDate(campaign.start_date) || "—"} → {formatUserDate(campaign.end_date) || "—"}</td>
                 <td>{formatCad(campaign.team_raised_cents)} / {formatCad(campaign.goal_cad)}</td>
               </tr>
             ))}

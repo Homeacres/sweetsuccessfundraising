@@ -1,0 +1,117 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { milestoneEmail, receiptEmail } from "@/lib/email/copy";
+import {
+  cartCandyLine,
+  publicCatalogProduct,
+  receiptCandyName,
+  stripeCheckoutProduct,
+} from "@/lib/public-names";
+
+const SOURCE_NAMES = ["Skittles", "Jolly Ranchers", "Mini gummy bears"] as const;
+
+const CUSTOMER_FILES = [
+  "components/Shop.tsx",
+  "components/CampaignShop.tsx",
+  "components/ApplyForm.tsx",
+  "components/Header.tsx",
+  "components/Footer.tsx",
+  "app/page.tsx",
+  "app/layout.tsx",
+  "app/checkout/success/page.tsx",
+  "app/checkout/cancelled/page.tsx",
+  "app/l/[parentToken]/page.tsx",
+  "app/unsubscribe/[parentToken]/page.tsx",
+  "app/privacy/page.tsx",
+  "app/t/[teamSlug]/page.tsx",
+  "app/t/[teamSlug]/[playerSlug]/page.tsx",
+  "lib/catalog.ts",
+  "lib/checkout.ts",
+  "lib/fulfill.ts",
+  "lib/email/copy.ts",
+  "lib/public-names.ts",
+  "lib/milestones-run.ts",
+];
+
+function joinedCustomerOutput(): string {
+  const products = SOURCE_NAMES.map((name, index) =>
+    publicCatalogProduct(
+      { product_id: `p${index}`, name, description: null },
+      ["Celly Crunches", "Snipe Snacks", "Barn Burner Bites"][index],
+    ),
+  );
+  const missing = publicCatalogProduct({ product_id: "missing", name: "Skittles", description: "chewy" }, null);
+  const stripe = stripeCheckoutProduct({ campaignName: "Hawks", totalBags: 3 });
+  const receipt = receiptEmail({
+    buyerName: "Pat",
+    team: "Hawks",
+    totalCents: 3600,
+    bags: 3,
+    lines: [
+      ...products.map((product) => ({
+        player: "Sam",
+        candy: receiptCandyName(product.displayName),
+        qty: 1,
+        grossCents: 1200,
+        mix: false,
+      })),
+      { player: "Sam", candy: receiptCandyName(missing.displayName), qty: 1, grossCents: 1200, mix: true },
+    ],
+  });
+  const milestone = milestoneEmail({
+    kind: "days_left",
+    team: "Hawks",
+    parentFirst: "Pat",
+    token: "token",
+    players: [{ first: "Sam", last: "Lee", hideLastName: false, bags: 3, teamCents: 1500 }],
+    endDate: "2026-11-15",
+  });
+  const cart = [
+    ...products.map((product) => cartCandyLine(product.displayName, "Standard bag", 3, false)),
+    cartCandyLine(missing.displayName, "Standard bag", 3, false),
+  ];
+  return JSON.stringify({ products, missing, stripe, receipt, milestone, cart });
+}
+
+describe("customer-facing product names", () => {
+  it("never puts products.name into shop, cart, Stripe, receipt, or email copy", () => {
+    const output = joinedCustomerOutput();
+    for (const name of SOURCE_NAMES) {
+      expect(output, name).not.toContain(name);
+    }
+    expect(output).toContain("Celly Crunches");
+    expect(output).toContain("Freeze-dried candy");
+    expect(output).toContain("Standard bag × 3");
+    expect(output).not.toContain("Flavour");
+  });
+
+  it("leaves a missing sport name off the shop title and cart, and off the Stripe line", () => {
+    const missing = publicCatalogProduct({ product_id: "missing", name: "Jolly Ranchers", description: null }, "  ");
+    expect(missing.displayName).toBeNull();
+    expect(JSON.stringify(missing)).not.toContain("Jolly Ranchers");
+    expect(cartCandyLine(null, "Premium bag", 1, false)).toBe("Premium bag × 1");
+    const stripe = stripeCheckoutProduct({ campaignName: "Hawks", totalBags: 1 });
+    expect(stripe).toEqual({
+      name: "Hawks fundraiser",
+      description: "1 freeze-dried candy bag. Bulk delivery to the team organizer.",
+    });
+    expect(receiptCandyName(null)).toBe("Freeze-dried candy");
+    expect(receiptCandyName("Free Pass Crunches")).toBe("Free Pass Crunches");
+  });
+
+  it("does not mention source brands in customer-facing source files", () => {
+    for (const file of CUSTOMER_FILES) {
+      const source = readFileSync(path.join(file), "utf8");
+      expect(source, file).not.toContain("baseName");
+      for (const name of SOURCE_NAMES) {
+        expect(source, `${file} contains ${name}`).not.toContain(name);
+      }
+    }
+    const catalog = readFileSync("lib/catalog.ts", "utf8");
+    expect(catalog).not.toContain("product.name");
+    const shop = readFileSync("components/Shop.tsx", "utf8");
+    expect(shop).toContain("cartCandyLine");
+    expect(shop).not.toContain("baseName");
+  });
+});

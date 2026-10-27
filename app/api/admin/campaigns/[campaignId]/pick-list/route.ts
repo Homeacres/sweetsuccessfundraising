@@ -1,5 +1,6 @@
 import { isAdminRequest } from "@/lib/admin-auth";
 import { toCsv } from "@/lib/csv";
+import { formatUserDate } from "@/lib/dates";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -10,24 +11,25 @@ export async function GET(_request: Request, context: { params: Promise<{ campai
   const { data, error } = await supabaseAdmin()
     .from("v_organizer_pick_list")
     .select(
-      "player_last_name, player_first_name, buyer_name, buyer_email, buyer_phone, candy_name, bag_type_code, bags, includes_mix_pack, ordered_at",
+      "player_last_name, player_first_name, buyer_name, buyer_email, buyer_phone, candy_name, base_candy, bag_type_code, bags, includes_mix_pack, ordered_at",
     )
     .eq("campaign_id", campaignId);
   if (error) return new Response("Could not build the pick list", { status: 500 });
 
   const rows = [...(data ?? [])].sort(comparePick);
   const csv = toCsv(
-    ["Player", "Buyer", "Email", "Phone", "Candy", "Bag", "Bags", "Mix pack", "Ordered"],
+    ["Player", "Buyer", "Email", "Phone", "Candy", "Brand", "Bag", "Bags", "Mix pack", "Ordered"],
     rows.map((row) => [
       `${row.player_first_name} ${row.player_last_name}`.trim(),
       row.buyer_name,
       row.buyer_email,
       row.buyer_phone,
       row.candy_name,
+      row.base_candy,
       row.bag_type_code,
       row.bags,
       row.includes_mix_pack ? "yes" : "no",
-      row.ordered_at,
+      formatUserDate(row.ordered_at) || row.ordered_at,
     ]),
   );
 

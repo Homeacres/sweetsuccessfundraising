@@ -1,3 +1,4 @@
+import { formatUserDate } from "@/lib/dates";
 import { appUrl } from "@/lib/env";
 import { formatCad } from "@/lib/money";
 import { playerDisplayName } from "@/lib/names";
@@ -148,10 +149,11 @@ export function milestoneEmail(input: {
   const unsubscribeUrl = `${origin}/unsubscribe/${input.token}`;
   const names = input.players.map((player) => playerDisplayName(player.first, player.last, player.hideLastName));
   const who = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  const endLabel = formatUserDate(input.endDate);
   const intro: Record<MilestoneName, string> = {
     start: `${input.team} is taking orders. Share ${who}'s link and the bags add up from there.`,
     midpoint: `${input.team} is about halfway through the fundraiser. ${who} could still use a few more orders.`,
-    days_left: `${input.team} is almost over${input.endDate ? ` (ends ${input.endDate})` : ""}. A quick text with ${who}'s link still counts.`,
+    days_left: `${input.team} is almost over${endLabel ? ` (ends ${endLabel})` : ""}. A quick text with ${who}'s link still counts.`,
     final_day: `Today is the last day for ${input.team}. Orders close tonight.`,
     close: `${input.team} has closed. Thanks for helping ${who} sell. The organizer will hand out the candy after it is delivered.`,
   };

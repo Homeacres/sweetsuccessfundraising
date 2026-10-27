@@ -59,6 +59,15 @@ button, input, select, textarea { font-family: inherit; font-size: 16px; }
   background: var(--navy); padding: 12px 16px 16px;
 }
 .nav-links a { color: rgba(255,255,255,0.86); text-decoration: none; padding: 10px 0; }
+.nav-links a.btn {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+  white-space: nowrap;
+  padding: 10px 18px;
+  line-height: 1.2;
+  color: var(--navy);
+}
 
 .hero {
   background: var(--navy); color: white;
@@ -134,7 +143,7 @@ textarea { min-height: 88px; }
 .banner.b { background: linear-gradient(90deg, var(--gold), var(--gold-light)); }
 .banner.c { background: linear-gradient(90deg, var(--navy), var(--blue)); }
 .prices { display: grid; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
-.prices li { background: var(--sky); border-radius: 12px; padding: 12px 14px; }
+.prices li { background: var(--sky); color: var(--navy); border-radius: 12px; padding: 12px 14px; }
 .footer { background: var(--navy); color: rgba(255,255,255,0.75); padding: 28px 16px 40px; }
 .footer a { color: white; }
 

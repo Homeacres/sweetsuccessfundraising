@@ -2,7 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 import { mixPackLines, normalizeCartLines } from "@/lib/cart";
+import { formatUserDate } from "@/lib/dates";
 import { formatCad } from "@/lib/money";
+import { cartCandyLine } from "@/lib/public-names";
 import {
   cartTotals,
   hasMultiBagTiers,
@@ -14,7 +16,7 @@ import {
 } from "@/lib/pricing";
 
 type Player = { cpId: string; name: string };
-type Product = { productId: string; baseName: string; displayName: string; description: string | null };
+type Product = { productId: string; displayName: string | null; description: string | null };
 type Bag = { bagTypeId: string; code: string; name: string; teamShareCents: number };
 type Line = { cpId: string; productId: string; bagTypeId: string; qty: number; fromMixPack: boolean };
 
@@ -153,7 +155,7 @@ export function Shop(props: {
       <h1>{props.campaignName}</h1>
       <p className="sub">
         Pay online. Candy is delivered in bulk to the organizer — no shipping address.{" "}
-        {props.endDate ? `Orders run through ${props.endDate}.` : ""}
+        {props.endDate ? `Orders run through ${formatUserDate(props.endDate)}.` : ""}
       </p>
       {props.goalCents > 0 && (
         <div style={{ margin: "16px 0 22px" }}>
@@ -177,8 +179,8 @@ export function Shop(props: {
         <div className="candy">
           {props.products.map((product) => (
             <article className="panel" key={product.productId}>
-              <h3>{product.displayName}</h3>
-              <p className="muted">{product.baseName}{product.description ? ` · ${product.description}` : ""}</p>
+              {product.displayName ? <h3>{product.displayName}</h3> : null}
+              {product.description ? <p className="muted">{product.description}</p> : null}
               {props.bags.map((bag) => {
                 const unit = unitPriceCents(props.tiers, bag.bagTypeId);
                 const qty = qtyOf(product.productId, bag.bagTypeId);
@@ -191,9 +193,9 @@ export function Shop(props: {
                       </div>
                     </div>
                     <div className="stepper">
-                      <button type="button" aria-label={`Fewer ${bag.name} ${product.displayName}`} onClick={() => setQty(product.productId, bag.bagTypeId, -1)} disabled={!canOrder}>−</button>
+                      <button type="button" aria-label={`Fewer ${bag.name}${product.displayName ? ` ${product.displayName}` : ""}`} onClick={() => setQty(product.productId, bag.bagTypeId, -1)} disabled={!canOrder}>−</button>
                       <span>{qty}</span>
-                      <button type="button" aria-label={`More ${bag.name} ${product.displayName}`} onClick={() => setQty(product.productId, bag.bagTypeId, 1)} disabled={!canOrder}>+</button>
+                      <button type="button" aria-label={`More ${bag.name}${product.displayName ? ` ${product.displayName}` : ""}`} onClick={() => setQty(product.productId, bag.bagTypeId, 1)} disabled={!canOrder}>+</button>
                     </div>
                   </div>
                 );
@@ -243,7 +245,7 @@ export function Shop(props: {
                 <div className="cart-line" key={`${line.cpId}-${line.productId}-${line.bagTypeId}`}>
                   <div>
                     <strong>{player?.name}</strong>
-                    <div className="muted">{product?.displayName} · {bag?.name} × {line.qty}{line.fromMixPack ? " · mix pack" : ""}</div>
+                    <div className="muted">{cartCandyLine(product?.displayName ?? null, bag?.name ?? "Bag", line.qty, line.fromMixPack)}</div>
                   </div>
                   <button className="btn btn-ghost" type="button" onClick={() => setLines((current) => current.filter((item) => item !== line))}>Remove</button>
                 </div>

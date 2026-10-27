@@ -1,4 +1,5 @@
 import { jsonbInt } from "@/lib/money";
+import { publicCatalogProduct, type PublicProduct } from "@/lib/public-names";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { BagRow, TierRow } from "@/lib/pricing";
 
@@ -95,12 +96,7 @@ export async function playersForSlug(teamSlug: string): Promise<PickerPlayer[]> 
   return data ?? [];
 }
 
-export type ShopProduct = {
-  productId: string;
-  baseName: string;
-  displayName: string;
-  description: string | null;
-};
+export type ShopProduct = PublicProduct;
 
 export type ShopBag = {
   bagTypeId: string;
@@ -124,7 +120,7 @@ export type ShopCatalog = {
 export async function shopCatalog(sportName: string): Promise<ShopCatalog> {
   const db = supabaseAdmin();
   const [productsRes, bagsRes, tiersRes, configRes, sportRes] = await Promise.all([
-    db.from("products").select("product_id, name, description, sort_order").eq("is_active", true).order("sort_order"),
+    db.from("products").select("product_id, description, sort_order").eq("is_active", true).order("sort_order"),
     db
       .from("bag_types")
       .select("bag_type_id, code, name, retail_price_cents, team_share_cents")
@@ -151,12 +147,9 @@ export async function shopCatalog(sportName: string): Promise<ShopCatalog> {
     tierLabels = (labelRes.data ?? []).map((row) => ({ qty: row.qty, label: row.label }));
   }
 
-  const products: ShopProduct[] = (productsRes.data ?? []).map((product) => ({
-    productId: product.product_id,
-    baseName: product.name,
-    displayName: names.get(product.product_id) || product.name,
-    description: product.description,
-  }));
+  const products: ShopProduct[] = (productsRes.data ?? []).map((product) =>
+    publicCatalogProduct(product, names.get(product.product_id)),
+  );
 
   const bags: ShopBag[] = (bagsRes.data ?? []).map((bag) => ({
     bagTypeId: bag.bag_type_id,

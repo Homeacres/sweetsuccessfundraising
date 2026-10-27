@@ -1,4 +1,5 @@
 import { receiptEmail, type ReceiptLine } from "@/lib/email/copy";
+import { receiptCandyName } from "@/lib/public-names";
 import { sendEmail } from "@/lib/email/send";
 import { playerDisplayName } from "@/lib/names";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -98,7 +99,7 @@ export async function sendOrderReceipt(order: PaidOrder): Promise<void> {
     };
     return {
       player: (line.cp_id && names.get(line.cp_id)) || "Player",
-      candy: line.display_name || "Freeze-dried candy",
+      candy: receiptCandyName(line.display_name),
       qty: line.qty ?? 0,
       grossCents: line.gross_cents ?? 0,
       mix: Boolean(line.from_mix_pack),

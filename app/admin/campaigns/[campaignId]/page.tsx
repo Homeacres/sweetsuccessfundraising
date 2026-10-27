@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/PrintButton";
 import { isAdminRequest } from "@/lib/admin-auth";
+import { formatUserDate } from "@/lib/dates";
 import { formatCad } from "@/lib/money";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -16,6 +17,7 @@ type PickRow = {
   buyer_email: string;
   buyer_phone: string | null;
   candy_name: string;
+  base_candy: string;
   bag_type_code: string;
   bags: number;
   includes_mix_pack: boolean;
@@ -46,7 +48,7 @@ export default async function CampaignAdminPage({
     db.from("v_campaign_production_totals").select("product_name, bag_type_code, bags, orders").eq("campaign_id", campaignId),
     db
       .from("v_organizer_pick_list")
-      .select("cp_id, player_first_name, player_last_name, order_id, buyer_name, buyer_email, buyer_phone, candy_name, bag_type_code, bags, includes_mix_pack, ordered_at")
+      .select("cp_id, player_first_name, player_last_name, order_id, buyer_name, buyer_email, buyer_phone, candy_name, base_candy, bag_type_code, bags, includes_mix_pack, ordered_at")
       .eq("campaign_id", campaignId),
     db.from("deliveries").select("delivery_id, status, scheduled_for, delivered_at, received_by, bags_delivered, notes").eq("campaign_id", campaignId).order("created_at", { ascending: false }),
     db.from("v_kpi_bags_per_order").select("paid_orders, bags, avg_bags_per_order").eq("campaign_id", campaignId).maybeSingle(),
@@ -126,7 +128,9 @@ export default async function CampaignAdminPage({
                 <div className="muted">{order.email}{order.phone ? ` · ${order.phone}` : ""}</div>
                 <ul>
                   {order.lines.map((line, index) => (
-                    <li key={`${line.candy_name}-${index}`}>{line.candy_name} · {line.bag_type_code} · {line.bags}{line.includes_mix_pack ? " · includes mix pack" : ""}</li>
+                    <li key={`${line.candy_name}-${line.base_candy}-${index}`}>
+                      {line.candy_name}{line.base_candy && line.base_candy !== line.candy_name ? ` · ${line.base_candy}` : ""} · {line.bag_type_code} · {line.bags}{line.includes_mix_pack ? " · includes mix pack" : ""}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -144,7 +148,8 @@ export default async function CampaignAdminPage({
               {delivery.status}
               {delivery.bags_delivered != null ? ` · ${delivery.bags_delivered} bags` : ""}
               {delivery.received_by ? ` · ${delivery.received_by}` : ""}
-              {delivery.delivered_at ? ` · ${new Date(delivery.delivered_at).toLocaleString("en-CA", { timeZone: "America/Edmonton" })}` : ""}
+              {delivery.scheduled_for ? ` · scheduled ${formatUserDate(delivery.scheduled_for)}` : ""}
+              {delivery.delivered_at ? ` · ${formatUserDate(delivery.delivered_at)}` : ""}
               {delivery.notes ? ` · ${delivery.notes}` : ""}
             </li>
           ))}

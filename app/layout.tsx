@@ -20,8 +20,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${barlow.variable} ${condensed.variable}`}>
+    <html lang="en" className={`${barlow.variable} ${condensed.variable}`}>
+      <body>
         <a className="skip" href="#main">Skip to content</a>
         <Header />
         <div id="main">{children}</div>

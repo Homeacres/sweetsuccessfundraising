@@ -30,6 +30,12 @@ So 10 standard bags are $120, and a mix pack (one of each of the three candies) 
 
 The organizer estimate on the apply form is separate. It turns the team's goal into a bag count using the standard bag's team share ($5), rounded up to the nearest 10 bags. That is a planning figure, not a checkout price.
 
+## Names buyers see
+
+The shop, cart, Stripe line item, success page, receipt, and parent emails use the sport-themed name from `sport_product_names`. They do not show `products.name`. Admin production totals and the pick list (screen and CSV) still show that source name. If a campaign's `sport` does not match `sports.sport_name`, or a product has no `sport_product_names` row, the shop leaves the candy title blank and the receipt says "Freeze-dried candy". The app does not read `sports.product_names` (those keys are Bag, Box, and Hat trick).
+
+Dates shown to people use a shared formatter. A `YYYY-MM-DD` value stays on that calendar day. Timestamps are shown in America/Edmonton.
+
 `fundraising_goal_estimate_cad` is stored in cents, matching `campaigns.goal_cad` and the other `*_cad` money columns.
 
 ## Setup
@@ -42,7 +48,7 @@ npm test
 npm run dev
 ```
 
-The app reads environment variables on the server. The browser is not given a Supabase key. Do not prefix `SUPABASE_SERVICE_ROLE_KEY` with `NEXT_PUBLIC_`.
+The app reads environment variables on the server, when a request needs them. `next build` does not connect to Supabase, Stripe, or Resend, so the build succeeds with none of these set. The browser is not given a Supabase key. Do not prefix `SUPABASE_SERVICE_ROLE_KEY` with `NEXT_PUBLIC_`.
 
 ### Environment variables
 
@@ -81,8 +87,8 @@ On Vercel, add an endpoint `https://<your-domain>/api/webhooks/stripe` for the t
 ## Vercel
 
 1. Import the GitHub repo and set the production branch to this branch, not `main`, until DNS cutover.
-2. Framework preset: Next.js. Root directory: the repository root (where `package.json` is).
-3. Add every variable from `.env.example`.
+2. Framework preset: Next.js. Root directory: the repository root (where `package.json` is). `vercel.json` only adds the daily cron. `.vercelignore` keeps the old `api/*.js` files off the upload so Vercel does not try to build those truncated scripts as functions. `index.html` and `CNAME` stay in git for GitHub Pages; Next serves `app/page.tsx` instead of `index.html`.
+3. Add every variable from `.env.example`. The build does not need them. Requests that talk to Supabase, Stripe, or Resend read them at request time.
 4. `vercel.json` schedules `GET /api/cron/milestones` at `0 16 * * *` (16:00 UTC). That is 9:00am when Edmonton is UTC−7 and 10:00am when it is UTC−6, so the 9:00 `send_hour_local` has passed either way. Set `CRON_SECRET` in the project; Vercel sends it on cron requests. Hobby plans allow one cron run a day, which matches this schedule.
 5. Do not point sweetsuccessfundraising.com at this deployment until you mean to replace the GitHub Pages site.
 

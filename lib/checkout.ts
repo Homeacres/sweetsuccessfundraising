@@ -3,6 +3,7 @@ import { getStripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeCartLines, type IncomingLine } from "@/lib/cart";
 import { CartPricingError } from "@/lib/pricing";
+import { sportThemedName, stripeCheckoutProduct } from "@/lib/public-names";
 import { cleanText, isEmail } from "@/lib/text";
 
 export type CheckoutResult = { ok: true; url: string } | { ok: false; error: string; status: number };
@@ -128,7 +129,7 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
       gross_cents: row.gross_cents,
       team_share_cents: row.team_share_cents,
       from_mix_pack: row.from_mix_pack,
-      display_name: nameByProduct.get(row.product_id) ?? null,
+      display_name: sportThemedName(nameByProduct.get(row.product_id)),
     }));
 
   const { data: order, error: orderError } = await db
@@ -184,10 +185,7 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
           price_data: {
             currency: "cad",
             unit_amount: totalCents,
-            product_data: {
-              name: `${campaign.campaign_name} fundraiser`,
-              description: `${totalBags} freeze-dried candy bag${totalBags === 1 ? "" : "s"}. Bulk delivery to the team organizer.`,
-            },
+            product_data: stripeCheckoutProduct({ campaignName: campaign.campaign_name, totalBags }),
           },
         },
       ],
