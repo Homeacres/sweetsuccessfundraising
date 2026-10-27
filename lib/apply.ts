@@ -1,10 +1,11 @@
 import { checkServiceArea, formatPostal } from "@/lib/area";
-import { calcEstimates } from "@/lib/estimate";
+import { deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
+import { parseParticipantCount, resolveOrganizerSport } from "@/lib/apply-sport";
+import { bagEstimate, type BagEstimate } from "@/lib/estimate";
 import { dollarsToCents } from "@/lib/money";
 import { listSports, serviceProvinces } from "@/lib/catalog";
-import { applicationAdminEmail, applicationApplicantEmail, outOfAreaAdminEmail } from "@/lib/email/copy";
+import { outOfAreaAdminEmail } from "@/lib/email/copy";
 import { sendEmail } from "@/lib/email/send";
-import { requiredEnv } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { cleanText, isEmail } from "@/lib/text";
 
@@ -15,6 +16,7 @@ export type ApplyInput = {
   phone: string;
   team: string;
   sport: string;
+  sportOther: string;
   city: string;
   postal: string;
   participants: number | null;
@@ -25,7 +27,7 @@ export type ApplyInput = {
 };
 
 export type ApplyResult =
-  | { ok: true; already?: boolean; outOfArea?: boolean; emailed: boolean }
+  | { ok: true; already?: boolean; outOfArea?: boolean; emailed: boolean; summary: BagEstimate | null }
   | { ok: false; error: string; status: number };
 
 export function parseApplyBody(body: unknown): ApplyInput | { error: string } {
@@ -40,6 +42,7 @@ export function parseApplyBody(body: unknown): ApplyInput | { error: string } {
     phone: cleanText(raw.phone, 40),
     team: cleanText(raw.team, 200),
     sport: cleanText(raw.sport, 80),
+    sportOther: cleanText(raw.sportOther, 40),
     city: cleanText(raw.city, 80),
     postal: cleanText(raw.postal, 10),
     participants: participants == null || Number.isNaN(participants) ? null : participants,
@@ -51,24 +54,27 @@ export function parseApplyBody(body: unknown): ApplyInput | { error: string } {
 }
 
 export async function submitApplication(input: ApplyInput): Promise<ApplyResult> {
-  if (input.honeypot) return { ok: true, emailed: false };
+  if (input.honeypot) return { ok: true, emailed: false, summary: null };
 
   if (!input.firstName || !input.lastName) return { ok: false, error: "Enter your first and last name.", status: 400 };
   if (!isEmail(input.email)) return { ok: false, error: "Enter a valid email address.", status: 400 };
   if (input.phone && input.phone.length > 40) return { ok: false, error: "Phone number is too long.", status: 400 };
   if (!input.team) return { ok: false, error: "Enter your club or team name.", status: 400 };
-  if (!input.sport) return { ok: false, error: "Choose a sport.", status: 400 };
-  if (input.participants != null && (!Number.isInteger(input.participants) || input.participants < 1 || input.participants > 5000)) {
-    return { ok: false, error: "Enter a participant count of at least 1.", status: 400 };
+  const participants = parseParticipantCount(input.participants);
+  if (!participants.ok) return { ok: false, error: participants.error, status: 400 };
+  if (input.goalDollars == null || input.goalDollars < 100 || input.goalDollars > 1_000_000) {
+    return { ok: false, error: "Enter a goal of at least $100.", status: 400 };
   }
-  if (input.goalDollars != null && (input.goalDollars < 100 || input.goalDollars > 1_000_000)) {
-    return { ok: false, error: "Enter a goal of at least $100, or leave it blank.", status: 400 };
-  }
+  const summary = bagEstimate(input.goalDollars, participants.count);
+  if (!summary) return { ok: false, error: "Enter a goal of at least $100.", status: 400 };
 
   const sports = await listSports();
-  if (!sports.some((sport) => sport.sport_name === input.sport)) {
-    return { ok: false, error: "Choose a sport from the list.", status: 400 };
-  }
+  const resolvedSport = resolveOrganizerSport(
+    input.sport,
+    input.sportOther,
+    sports.map((sport) => sport.sport_name),
+  );
+  if (!resolvedSport.ok) return { ok: false, error: resolvedSport.error, status: 400 };
 
   const provinces = await serviceProvinces();
   const area = checkServiceArea(input.postal, provinces);
@@ -77,7 +83,6 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
   }
 
   const db = supabaseAdmin();
-  const adminEmail = requiredEnv("ADMIN_EMAIL");
 
   if (!area.ok) {
     const { error } = await db.from("out_of_area_log").insert({
@@ -87,27 +92,23 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
       city: input.city || null,
       province: area.province,
       country: "CA",
-      sport: input.sport,
+      sport: resolvedSport.sport,
       form: "pilot_apply",
     });
     if (error) throw error;
-    let emailed = false;
-    try {
-      const message = outOfAreaAdminEmail({
-        firstName: input.firstName,
-        lastName: input.lastName,
-        email: input.email,
-        city: input.city,
-        postal: formatPostal(area.postal),
-        province: area.province,
-        sport: input.sport,
-      });
-      await sendEmail({ to: adminEmail, ...message });
-      emailed = true;
-    } catch (err) {
-      console.error("out-of-area notice failed", err instanceof Error ? err.message : "error");
-    }
-    return { ok: true, outOfArea: true, emailed };
+    const message = outOfAreaAdminEmail({
+      firstName: input.firstName,
+      lastName: input.lastName,
+      email: input.email,
+      city: input.city,
+      postal: formatPostal(area.postal),
+      province: area.province,
+      sport: resolvedSport.sport,
+    });
+    const emailed = await sendApplyNotices([
+      { to: applyAdminTo(), emailType: "apply_out_of_area", message },
+    ]);
+    return { ok: true, outOfArea: true, emailed, summary: null };
   }
 
   const { data: existing, error: existingError } = await db
@@ -116,22 +117,7 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     .eq("email", input.email)
     .maybeSingle();
   if (existingError) throw existingError;
-  if (existing) return { ok: true, already: true, emailed: false };
-
-  const { data: standardBag } = await db
-    .from("bag_types")
-    .select("team_share_cents")
-    .eq("code", "standard")
-    .eq("is_active", true)
-    .maybeSingle();
-  const teamShareDollars = (standardBag?.team_share_cents ?? 500) / 100;
-  const estimate =
-    input.goalDollars && input.participants
-      ? calcEstimates(input.goalDollars, input.participants, teamShareDollars)
-      : null;
-  const estimateText = estimate
-    ? `About ${estimate.bagsNeeded.toLocaleString("en-CA")} bags (${estimate.bagsLow}–${estimate.bagsHigh} per player).`
-    : null;
+  if (existing) return { ok: true, already: true, emailed: false, summary: null };
 
   const { error: insertError } = await db.from("organizers").insert({
     first_name: input.firstName,
@@ -139,13 +125,13 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     email: input.email,
     phone: input.phone || null,
     organization_name: input.team,
-    sport: input.sport,
+    sport: resolvedSport.sport,
     city: input.city || null,
     province: area.province,
     country: "CA",
     location_confirmed: false,
-    participant_count_estimate: input.participants,
-    fundraising_goal_estimate_cad: input.goalDollars == null ? null : dollarsToCents(input.goalDollars),
+    participant_count_estimate: participants.count,
+    fundraising_goal_estimate_cad: dollarsToCents(input.goalDollars),
     how_heard: input.howHeard || null,
     consent_optin: input.consent,
     consent_at: input.consent ? new Date().toISOString() : null,
@@ -153,38 +139,55 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     notes: `Postal code: ${formatPostal(area.postal)}`,
   });
   if (insertError) {
-    if (insertError.code === "23505") return { ok: true, already: true, emailed: false };
+    if (insertError.code === "23505") return { ok: true, already: true, emailed: false, summary: null };
     throw insertError;
   }
 
-  let emailed = false;
-  try {
-    const admin = applicationAdminEmail({
-      firstName: input.firstName,
-      lastName: input.lastName,
-      email: input.email,
-      phone: input.phone,
-      team: input.team,
-      sport: input.sport,
-      city: input.city,
-      postal: formatPostal(area.postal),
-      participants: input.participants,
-      goalDollars: input.goalDollars,
-      howHeard: input.howHeard,
-      consent: input.consent,
-      estimate: estimateText,
-    });
-    await sendEmail({ to: adminEmail, ...admin });
-    const applicant = applicationApplicantEmail({
-      firstName: input.firstName,
-      team: input.team,
-      estimate: estimateText,
-    });
-    await sendEmail({ to: input.email, ...applicant });
-    emailed = true;
-  } catch (err) {
-    console.error("application email failed", err instanceof Error ? err.message : "error");
-  }
+  const notices = planApplicantNotices({
+    applicantEmail: input.email,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    phone: input.phone,
+    team: input.team,
+    sport: resolvedSport.sport,
+    city: input.city,
+    postal: formatPostal(area.postal),
+    participants: participants.count,
+    goalDollars: input.goalDollars,
+    howHeard: input.howHeard,
+    consent: input.consent,
+    summary,
+    env: process.env,
+  });
+  const emailed = await sendApplyNotices(notices);
+  return { ok: true, emailed, summary };
+}
 
-  return { ok: true, emailed };
+function applyAdminTo(): string {
+  return process.env.ADMIN_EMAIL?.trim() || "obrien71@gmail.com";
+}
+
+async function sendApplyNotices(notices: ApplyNotice[]): Promise<boolean> {
+  try {
+    const result = await deliverApplyNotices({
+      notices,
+      env: process.env,
+      send: (message) => sendEmail(message),
+      log: logApplyEmail,
+    });
+    return result.sent;
+  } catch (error) {
+    console.error("apply email failed", error instanceof Error ? error.message : "error");
+    return false;
+  }
+}
+
+async function logApplyEmail(row: { email_type: string; recipient: string; status: string; resend_id: string | null }): Promise<void> {
+  const { error } = await supabaseAdmin().from("email_log").insert({
+    email_type: row.email_type,
+    recipient: row.recipient,
+    status: row.status,
+    resend_id: row.resend_id,
+  });
+  if (error) console.error("apply email log failed", error.message);
 }

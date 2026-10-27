@@ -28,7 +28,7 @@ Bags are sold one at a time. In `price_tiers`, only the qty=1 rows are active:
 
 So 10 standard bags are $120, and a mix pack (one of each of the three candies) is 3 × $12 = $36. The 3/5/7/10 rows are still in the table with `is_active = false`. `fn_price_cart` ignores them. The shop reads active tiers only and does not draw a volume ladder unless an active tier has qty greater than 1. Turning those rows back on is enough for the same code to price them again; no schema change is required.
 
-The organizer estimate on the apply form is separate. It turns the team's goal into a bag count using the standard bag's team share ($5), rounded up to the nearest 10 bags. That is a planning figure, not a checkout price.
+The bag estimate is not shown while the Apply form is being filled in. After a successful submit, the confirmation (and the applicant email, when sending is enabled) uses `bags = ceil((goal dollars / 5) / 10) * 10`. The goal is the team's share in dollars, and $5 of each bag goes to the team. `fundraising_goal_estimate_cad` is stored in cents, so that value is divided by 100 before the formula. "About X bags each" is `ceil(total bags / participants)`. This is a planning figure, not a checkout price.
 
 ## Names buyers see
 
@@ -61,7 +61,8 @@ The app reads environment variables on the server, when a request needs them. `n
 | `STRIPE_WEBHOOK_SECRET` | Signing secret (`whsec_...`) from the Stripe CLI or the Vercel webhook endpoint. |
 | `RESEND_API_KEY` | Resend API key. |
 | `RESEND_FROM` | From address on a domain verified in Resend. Example: `Sweet Success Fundraising <hello@sweetsuccessfundraising.com>` |
-| `ADMIN_EMAIL` | Where organizer applications are sent. |
+| `ADMIN_EMAIL` | Copy of an organizer application. If unset, the copy goes to obrien71@gmail.com. |
+| `APPLY_EMAILS_ENABLED` | Apply emails send only when this is `true`, `1`, or `yes` and `RESEND_API_KEY` is set. Otherwise nothing is sent. |
 | `ADMIN_PASSWORD` | Password for `/admin`. |
 | `CRON_SECRET` | Bearer token for `/api/cron/milestones`. Vercel Cron sends it as `Authorization: Bearer ...`. |
 

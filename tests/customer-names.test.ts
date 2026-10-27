@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { milestoneEmail, receiptEmail } from "@/lib/email/copy";
+import { applicationApplicantEmail, milestoneEmail, receiptEmail } from "@/lib/email/copy";
+import { bagEstimate } from "@/lib/estimate";
 import {
   cartCandyLine,
   publicCatalogProduct,
@@ -187,5 +188,11 @@ describe("customer-facing product names", () => {
       endDate: "2026-11-15",
     });
     expect(descriptiveBrandHits(`${milestone.subject}\n${milestone.text}\n${milestone.html}`)).toEqual([]);
+
+    const applySummary = bagEstimate(2000, 20);
+    expect(applySummary).not.toBeNull();
+    const applyMail = applicationApplicantEmail({ firstName: "Pat", team: "Hawks", summary: applySummary! });
+    expect(descriptiveBrandHits(`${applyMail.subject}\n${applyMail.text}\n${applyMail.html}`)).toEqual([]);
+    expect(descriptiveBrandHits(readFileSync("lib/estimate.ts", "utf8"))).toEqual([]);
   });
 });

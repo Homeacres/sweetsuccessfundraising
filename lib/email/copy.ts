@@ -1,4 +1,5 @@
 import { formatUserDate } from "@/lib/dates";
+import { estimateSentences, type BagEstimate } from "@/lib/estimate";
 import { appUrl } from "@/lib/env";
 import { formatCad } from "@/lib/money";
 import { playerDisplayName } from "@/lib/names";
@@ -27,6 +28,8 @@ export function shell(title: string, innerHtml: string, innerText: string): { ht
   return { html, text: `${title}\n\n${innerText}\n\nSweet Success Fundraising` };
 }
 
+export type ApplyEmail = { subject: string; html: string; text: string };
+
 export function applicationAdminEmail(input: {
   firstName: string;
   lastName: string;
@@ -36,12 +39,12 @@ export function applicationAdminEmail(input: {
   sport: string;
   city: string;
   postal: string;
-  participants: number | null;
-  goalDollars: number | null;
+  participants: number;
+  goalDollars: number;
   howHeard: string;
   consent: boolean;
-  estimate: string | null;
-}): { subject: string; html: string; text: string } {
+  summary: BagEstimate;
+}): ApplyEmail {
   const rows: [string, string][] = [
     ["Name", `${input.firstName} ${input.lastName}`],
     ["Email", input.email],
@@ -50,11 +53,11 @@ export function applicationAdminEmail(input: {
     ["Sport", input.sport],
     ["City", input.city || "—"],
     ["Postal code", input.postal],
-    ["Participants", input.participants ? String(input.participants) : "—"],
-    ["Goal", input.goalDollars ? `$${input.goalDollars.toLocaleString("en-CA")}` : "—"],
+    ["Participants", String(input.participants)],
+    ["Goal", formatCad(Math.round(input.goalDollars * 100))],
     ["Heard about us", input.howHeard || "—"],
     ["CASL consent", input.consent ? "Yes" : "No"],
-    ["Estimate", input.estimate || "—"],
+    ["Estimate", estimatePlain(input.summary)],
   ];
   const text = rows.map(([label, value]) => `${label}: ${value}`).join("\n");
   const htmlRows = rows
@@ -67,16 +70,23 @@ export function applicationAdminEmail(input: {
   return { subject: `New application: ${input.team}`, ...wrapped };
 }
 
+function estimatePlain(summary: BagEstimate): string {
+  const lines = estimateSentences(summary);
+  return `${lines.intro} ${lines.total} ${lines.each}`;
+}
+
 export function applicationApplicantEmail(input: {
   firstName: string;
   team: string;
-  estimate: string | null;
-}): { subject: string; html: string; text: string } {
-  const extra = input.estimate ? `\n\n${input.estimate}` : "";
-  const text = `Hi ${input.firstName}, we have your application for ${input.team}. We'll confirm your campaign within 48 hours.${extra}\n\nQuestions: hello@sweetsuccessfundraising.com`;
+  summary: BagEstimate;
+}): ApplyEmail {
+  const lines = estimateSentences(input.summary);
+  const text = `Hi ${input.firstName}, we have your application for ${input.team}. We'll confirm your campaign within 48 hours.\n\n${lines.intro}\n${lines.total}\n${lines.each}\n\nQuestions: hello@sweetsuccessfundraising.com`;
   const html = `<p>Hi ${escapeHtml(input.firstName)},</p>
 <p>We have your application for <strong>${escapeHtml(input.team)}</strong>. We'll confirm your campaign within 48 hours.</p>
-${input.estimate ? `<p>${escapeHtml(input.estimate)}</p>` : ""}
+<p>${escapeHtml(lines.intro)}</p>
+<p>${escapeHtml(lines.total)}</p>
+<p>${escapeHtml(lines.each)}</p>
 <p>Questions? Email <a href="mailto:hello@sweetsuccessfundraising.com">hello@sweetsuccessfundraising.com</a>.</p>`;
   const wrapped = shell("You're in the pipeline", html, text);
   return { subject: "We received your Sweet Success application", ...wrapped };

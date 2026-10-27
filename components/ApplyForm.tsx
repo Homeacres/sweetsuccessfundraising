@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
-import { calcEstimates } from "@/lib/estimate";
+import { estimateSentences, type BagEstimate } from "@/lib/estimate";
 import { formatCad } from "@/lib/money";
 
 const HEARD = [
@@ -18,24 +18,22 @@ const HEARD = [
 
 type Sport = { sport_name: string; emoji: string | null };
 type Price = { code: string; name: string; priceCents: number; teamShareCents: number };
+type Done = "saved" | "already" | "away";
 
 export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[] }) {
   const [consent, setConsent] = useState(false);
   const [company, setCompany] = useState("");
-  const [goal, setGoal] = useState("");
-  const [players, setPlayers] = useState("");
+  const [sport, setSport] = useState("");
+  const [sportOther, setSportOther] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState<"saved" | "already" | "away" | null>(null);
+  const [done, setDone] = useState<Done | null>(null);
   const [emailed, setEmailed] = useState(false);
+  const [summary, setSummary] = useState<BagEstimate | null>(null);
 
-  const standardShare = (prices.find((price) => price.code === "standard")?.teamShareCents ?? 500) / 100;
-  const estimate = useMemo(() => {
-    const goalDollars = Number(goal);
-    const count = Number(players);
-    if (!goal || !players) return null;
-    return calcEstimates(goalDollars, count, standardShare);
-  }, [goal, players, standardShare]);
+  const options = sports.some((item) => item.sport_name === "Other")
+    ? sports
+    : [...sports, { sport_name: "Other", emoji: null }];
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -52,7 +50,8 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
           email: form.get("email"),
           phone: form.get("phone"),
           team: form.get("team"),
-          sport: form.get("sport"),
+          sport,
+          sportOther: sport === "Other" ? sportOther : "",
           city: form.get("city"),
           postal: form.get("postal"),
           participants: form.get("participants"),
@@ -62,12 +61,20 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
           company,
         }),
       });
-      const data = (await response.json()) as { ok?: boolean; error?: string; already?: boolean; outOfArea?: boolean; emailed?: boolean };
+      const data = (await response.json()) as {
+        ok?: boolean;
+        error?: string;
+        already?: boolean;
+        outOfArea?: boolean;
+        emailed?: boolean;
+        summary?: BagEstimate | null;
+      };
       if (!response.ok || !data.ok) {
         setError(data.error || "We couldn't save that. Please try again.");
         return;
       }
       setEmailed(Boolean(data.emailed));
+      setSummary(data.summary ?? null);
       setDone(data.outOfArea ? "away" : data.already ? "already" : "saved");
     } catch {
       setError("We couldn't save that. Please try again.");
@@ -76,18 +83,32 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
     }
   }
 
+  if (done === "saved") {
+    const lines = summary ? estimateSentences(summary) : null;
+    return (
+      <div className="card" id="apply">
+        <h2>You're in the pipeline</h2>
+        <p>We saved your application. We'll confirm your campaign within 48 hours.</p>
+        {lines ? (
+          <>
+            <p>{lines.intro}</p>
+            <p>{lines.total}</p>
+            <p>{lines.each}</p>
+          </>
+        ) : null}
+        {emailed ? <p>We emailed you a confirmation.</p> : null}
+      </div>
+    );
+  }
+
   if (done) {
     return (
       <div className="card" id="apply">
-        <h2>{done === "away" ? "We're not in that area yet" : done === "already" ? "We already have your application" : "You're in the pipeline"}</h2>
+        <h2>{done === "away" ? "We're not in that area yet" : "We already have your application"}</h2>
         <p>
           {done === "away"
             ? "Sweet Success currently serves Alberta. We saved your note and will be in touch if that changes."
-            : done === "already"
-              ? "This email is already on an application. We'll use the details we have."
-              : emailed
-                ? "We saved your application and emailed you a confirmation. We'll confirm the campaign within 48 hours."
-                : "We saved your application. The confirmation email didn't send just now, but we still have it and will be in touch."}
+            : "This email is already on an application. We'll use the details we have."}
         </p>
       </div>
     );
@@ -123,15 +144,28 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
       <input id="phone" name="phone" type="tel" autoComplete="tel" />
       <label htmlFor="team">Club or team</label>
       <input id="team" name="team" required />
-      <label htmlFor="sport">Sport</label>
-      <select id="sport" name="sport" required defaultValue="">
+      <label htmlFor="sport">Sport or activity</label>
+      <select id="sport" name="sport" required value={sport} onChange={(event) => setSport(event.target.value)}>
         <option value="" disabled>Select a sport</option>
-        {sports.map((sport) => (
-          <option key={sport.sport_name} value={sport.sport_name}>
-            {sport.emoji ? `${sport.emoji} ` : ""}{sport.sport_name}
+        {options.map((item) => (
+          <option key={item.sport_name} value={item.sport_name}>
+            {item.emoji ? `${item.emoji} ` : ""}{item.sport_name}
           </option>
         ))}
       </select>
+      {sport === "Other" ? (
+        <>
+          <label htmlFor="sportOther">Which sport or activity?</label>
+          <input
+            id="sportOther"
+            name="sportOther"
+            value={sportOther}
+            onChange={(event) => setSportOther(event.target.value)}
+            maxLength={40}
+            required
+          />
+        </>
+      ) : null}
       <div className="row two">
         <div>
           <label htmlFor="city">City</label>
@@ -144,20 +178,14 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
       </div>
       <div className="row two">
         <div>
-          <label htmlFor="participants">Participants</label>
-          <input id="participants" name="participants" inputMode="numeric" min={1} value={players} onChange={(event) => setPlayers(event.target.value)} />
+          <label htmlFor="participants">Number of participants</label>
+          <input id="participants" name="participants" inputMode="numeric" min={1} max={200} step={1} required />
         </div>
         <div>
           <label htmlFor="goal">Goal the team keeps (CAD)</label>
-          <input id="goal" name="goal" inputMode="decimal" min={100} value={goal} onChange={(event) => setGoal(event.target.value)} />
+          <input id="goal" name="goal" inputMode="decimal" min={100} required />
         </div>
       </div>
-      {estimate && (
-        <div className="estimate">
-          <div>About <strong>{estimate.bagsNeeded.toLocaleString("en-CA")}</strong> bags</div>
-          <div className="fine">{estimate.bagsLow}–{estimate.bagsHigh} bags per player. Rounded up to the nearest 10, from the team share on a standard bag.</div>
-        </div>
-      )}
       <label htmlFor="howHeard">How did you hear about us?</label>
       <select id="howHeard" name="howHeard" defaultValue="">
         <option value="">Select an option</option>
@@ -172,7 +200,7 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
         <input id="company" name="company" tabIndex={-1} autoComplete="off" value={company} onChange={(event) => setCompany(event.target.value)} />
       </div>
       {error && <div className="alert error" role="alert">{error}</div>}
-      <button className="btn btn-navy" type="submit" disabled={pending || sports.length === 0}>
+      <button className="btn btn-navy" type="submit" disabled={pending}>
         {pending ? "Sending…" : "Apply"}
       </button>
       <p className="fine">Your information is saved to Sweet Success and used to set up the fundraiser. It is not sold. The updates box starts unchecked.</p>
