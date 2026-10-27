@@ -79,12 +79,12 @@ export default async function CampaignAdminPage({
   return (
     <main className="page wrap">
       <p className="no-print"><Link href="/admin">All campaigns</Link></p>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div className="page-head">
         <div>
           <h1>{campaign.campaign_name}</h1>
           <p className="muted">{campaign.sport} · {campaign.status}{campaign.team_slug ? ` · /t/${campaign.team_slug}` : ""}</p>
         </div>
-        <div className="no-print" style={{ display: "flex", gap: 8 }}>
+        <div className="page-actions no-print">
           <PrintButton />
           <a className="btn btn-ghost" href={`/api/admin/campaigns/${campaignId}/pick-list`}>Download CSV</a>
         </div>

@@ -87,9 +87,9 @@ On Vercel, add an endpoint `https://<your-domain>/api/webhooks/stripe` for the t
 ## Vercel
 
 1. Import the GitHub repo and set the production branch to this branch, not `main`, until DNS cutover.
-2. Framework preset: Next.js. Root directory: the repository root (where `package.json` is). `vercel.json` only adds the daily cron. `.vercelignore` keeps the old `api/*.js` files off the upload so Vercel does not try to build those truncated scripts as functions. `index.html` and `CNAME` stay in git for GitHub Pages; Next serves `app/page.tsx` instead of `index.html`.
+2. Framework preset: Next.js. Root directory: the repository root (where `package.json` is). `vercel.json` pins `framework` to `nextjs` and `buildCommand` to `next build`, and it does not set `outputDirectory` (Next writes to `.next`). `package.json` `engines.node` is `22.x`. `.vercelignore` keeps the old `api/*.js` files off the upload so Vercel does not try to build those truncated scripts as functions. `index.html` and `CNAME` stay in git for GitHub Pages; Next serves `app/page.tsx` instead of `index.html`.
 3. Add every variable from `.env.example`. The build does not need them. Requests that talk to Supabase, Stripe, or Resend read them at request time.
-4. `vercel.json` schedules `GET /api/cron/milestones` at `0 16 * * *` (16:00 UTC). That is 9:00am when Edmonton is UTC−7 and 10:00am when it is UTC−6, so the 9:00 `send_hour_local` has passed either way. Set `CRON_SECRET` in the project; Vercel sends it on cron requests. Hobby plans allow one cron run a day, which matches this schedule.
+4. `vercel.json` schedules `GET /api/cron/milestones` at `0 16 * * *` (16:00 UTC, once a day). That is 9:00am when Edmonton is UTC−7 and 10:00am when it is UTC−6, so the 9:00 `send_hour_local` has passed either way. Set `CRON_SECRET` in the project; Vercel sends it on cron requests. Hobby plans allow a cron only when it runs at most once a day. This five-field expression matches that rule.
 5. Do not point sweetsuccessfundraising.com at this deployment until you mean to replace the GitHub Pages site.
 
 ## Routes

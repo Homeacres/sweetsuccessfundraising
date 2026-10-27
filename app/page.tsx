@@ -89,7 +89,7 @@ export default async function HomePage() {
               <div className="banner b" />
               <p className="kicker">Dance and gymnastics</p>
               <h3>Backflip Bears</h3>
-              <p>Freeze-dried gummy bears with a snap. A favourite at recitals and meets.</p>
+              <p>Freeze-dried bears with a snap. A favourite at recitals and meets.</p>
             </article>
             <article className="panel">
               <div className="banner c" />
