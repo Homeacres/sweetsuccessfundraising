@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { applicationApplicantEmail, milestoneEmail, receiptEmail } from "@/lib/email/copy";
 import { bagEstimate } from "@/lib/estimate";
+import { productPhotoForSort } from "@/components/product-photos";
 import {
   cartCandyLine,
   publicCatalogProduct,
@@ -194,5 +195,21 @@ describe("customer-facing product names", () => {
     const applyMail = applicationApplicantEmail({ firstName: "Pat", team: "Hawks", summary: applySummary! });
     expect(descriptiveBrandHits(`${applyMail.subject}\n${applyMail.text}\n${applyMail.html}`)).toEqual([]);
     expect(descriptiveBrandHits(readFileSync("lib/estimate.ts", "utf8"))).toEqual([]);
+  });
+
+  it("attaches finished-product photos by sort order and keeps brand words out of the alt text", () => {
+    expect(productPhotoForSort(1)?.src).toBe("/photos/fruit-chews.jpg");
+    expect(productPhotoForSort(2)?.src).toBe("/photos/spheres.jpg");
+    expect(productPhotoForSort(3)?.src).toBe("/photos/bears.jpg");
+    expect(productPhotoForSort(4)).toBeNull();
+    expect(productPhotoForSort(null)).toBeNull();
+    for (const order of [1, 2, 3]) {
+      const photo = productPhotoForSort(order);
+      expect(photo).not.toBeNull();
+      expect(descriptiveBrandHits(photo!.alt)).toEqual([]);
+      for (const name of SOURCE_NAMES) {
+        expect(photo!.alt).not.toContain(name);
+      }
+    }
   });
 });

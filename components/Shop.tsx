@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { ProductPhotoView } from "@/components/ProductPhoto";
+import type { ProductPhoto } from "@/components/product-photos";
 import { mixPackLines, normalizeCartLines } from "@/lib/cart";
 import { formatUserDate } from "@/lib/dates";
 import { formatCad } from "@/lib/money";
@@ -16,7 +18,12 @@ import {
 } from "@/lib/pricing";
 
 type Player = { cpId: string; name: string };
-type Product = { productId: string; displayName: string | null; description: string | null };
+type Product = {
+  productId: string;
+  displayName: string | null;
+  description: string | null;
+  photo: ProductPhoto | null;
+};
 type Bag = { bagTypeId: string; code: string; name: string; teamShareCents: number };
 type Line = { cpId: string; productId: string; bagTypeId: string; qty: number; fromMixPack: boolean };
 
@@ -179,6 +186,7 @@ export function Shop(props: {
         <div className="candy">
           {props.products.map((product) => (
             <article className="panel" key={product.productId}>
+              {product.photo ? <ProductPhotoView photo={product.photo} /> : null}
               {product.displayName ? <h3>{product.displayName}</h3> : null}
               {product.description ? <p className="muted">{product.description}</p> : null}
               {props.bags.map((bag) => {

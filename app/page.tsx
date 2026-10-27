@@ -1,4 +1,6 @@
 import { ApplyForm } from "@/components/ApplyForm";
+import { ProductPhotoView } from "@/components/ProductPhoto";
+import { bearsPhoto, fruitChewsPhoto, spheresPhoto } from "@/components/product-photos";
 import { listSports, publicBagPrices, type PublicBagPrice, type SportOption } from "@/lib/catalog";
 import { supabaseConfigured } from "@/lib/env";
 import { formatCad } from "@/lib/money";
@@ -80,19 +82,19 @@ export default async function HomePage() {
           <p className="sub">Three candies, named for the sport on the team page. Sold by the bag.</p>
           <div className="grid-3" style={{ marginTop: 28 }}>
             <article className="panel">
-              <div className="banner a" />
+              <ProductPhotoView photo={fruitChewsPhoto} />
               <p className="kicker">Hockey</p>
               <h3>Celly Crunches</h3>
               <p>Freeze-dried fruit chews with a light, loud crunch. Named for the celebration.</p>
             </article>
             <article className="panel">
-              <div className="banner b" />
+              <ProductPhotoView photo={bearsPhoto} />
               <p className="kicker">Dance and gymnastics</p>
               <h3>Backflip Bears</h3>
               <p>Freeze-dried bears with a snap. A favourite at recitals and meets.</p>
             </article>
             <article className="panel">
-              <div className="banner c" />
+              <ProductPhotoView photo={spheresPhoto} />
               <p className="kicker">Baseball</p>
               <h3>Moon Balls</h3>
               <p>Freeze-dried hard candy puffed into airy spheres. Intense flavour, one bite.</p>

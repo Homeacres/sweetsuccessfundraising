@@ -1,3 +1,4 @@
+import { productPhotoForSort, type ProductPhoto } from "@/components/product-photos";
 import { jsonbInt } from "@/lib/money";
 import { publicCatalogProduct, type PublicProduct } from "@/lib/public-names";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -96,7 +97,7 @@ export async function playersForSlug(teamSlug: string): Promise<PickerPlayer[]> 
   return data ?? [];
 }
 
-export type ShopProduct = PublicProduct;
+export type ShopProduct = PublicProduct & { photo: ProductPhoto | null };
 
 export type ShopBag = {
   bagTypeId: string;
@@ -147,9 +148,10 @@ export async function shopCatalog(sportName: string): Promise<ShopCatalog> {
     tierLabels = (labelRes.data ?? []).map((row) => ({ qty: row.qty, label: row.label }));
   }
 
-  const products: ShopProduct[] = (productsRes.data ?? []).map((product) =>
-    publicCatalogProduct(product, names.get(product.product_id)),
-  );
+  const products: ShopProduct[] = (productsRes.data ?? []).map((product) => ({
+    ...publicCatalogProduct(product, names.get(product.product_id)),
+    photo: productPhotoForSort(product.sort_order),
+  }));
 
   const bags: ShopBag[] = (bagsRes.data ?? []).map((bag) => ({
     bagTypeId: bag.bag_type_id,
