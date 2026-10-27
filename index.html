@@ -404,6 +404,7 @@
           <span class="popup-btn-text">Apply →</span>
           <div class="popup-spinner"></div>
         </button>
+        <p id="popupError" role="alert" style="display:none;color:#c62828;font-size:13px;text-align:center;margin-top:10px;line-height:1.4;"></p>
         <p class="popup-fine-print">Your information is secure and will never be shared or sold.</p>
       </div>
     </div>
@@ -666,7 +667,7 @@
               </select>
             </div>
             <label class="mini-checkbox-row">
-              <input type="checkbox" id="hc-optIn" checked>
+              <input type="checkbox" id="hc-optIn">
               <span>I'd like to receive fundraising tips and updates from Sweet Success Fundraising.</span>
             </label>
             <button class="btn-calc-submit" id="hcSubmitBtn" onclick="handleHeroCalcSubmit()">
@@ -999,6 +1000,10 @@
   const CONFIG = {
     CALC_WEBHOOK_URL:  'https://hook.us2.make.com/zyca248lifn3ckumpgd7o6jpx3rtfby7', // Make.com proxy → Attio
     APPLY_WEBHOOK_URL: '', // Make.com Apply popup webhook URL
+    // Apply popup: email via FormSubmit.co (AJAX) + save to Supabase organizers via insert-only RPC.
+    APPLY_EMAIL_URL: 'https://formsubmit.co/ajax/obrien71@gmail.com',
+    SUPABASE_URL: 'https://iblzoubevkpurzmimguk.supabase.co',
+    SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_9go_CuHlF8IRXINocHZjOg_cEupDKzh', // public key (safe in browser); RLS + insert-only function
     SYF_PAGE_URL: 'start-your-fundraiser.html',
   };
 
@@ -1084,26 +1089,62 @@
     return valid;
   }
 
+  // Apply popup submit. Rule: show success only after a confirmed submit.
+  // Email (FormSubmit) and DB save (Supabase) run in parallel. The application counts as
+  // received as soon as EITHER is confirmed (FormSubmit can take 30-60s; the email keeps
+  // sending in the background). If both fail, show an honest error.
+  function postJSON(url, body, headers, ms) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), ms || 15000);
+    return fetch(url, { method: 'POST', keepalive: true, headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, headers || {}), body: JSON.stringify(body), signal: ctl.signal })
+      .finally(() => clearTimeout(t));
+  }
+
   async function handlePopupSubmit() {
-    if (!validatePopup()) return;
     const btn = document.getElementById('popSubmitBtn');
+    const errEl = document.getElementById('popupError');
+    if (btn.disabled) return;
+    errEl.style.display = 'none';
+    if (!validatePopup()) return;
+    btn.disabled = true;
     btn.classList.add('loading');
     const data = {
       firstName: document.getElementById('pop-firstName').value.trim(),
       lastName:  document.getElementById('pop-lastName').value.trim(),
       email:     document.getElementById('pop-email').value.trim(),
       phone:     document.getElementById('pop-phone').value.trim(),
-      submittedAt: new Date().toISOString(),
-      source: 'apply_popup',
     };
-    if (CONFIG.APPLY_WEBHOOK_URL) {
-      try { fetch(CONFIG.APPLY_WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'text/plain'}, body: JSON.stringify(data) }); }
-      catch(e) { console.warn('Apply webhook failed', e); }
-    }
-    document.getElementById('popupFormWrap').style.display = 'none';
-    document.getElementById('popSuccessEmail').textContent = data.email;
-    document.getElementById('popupSuccess').classList.add('visible');
+    const emailReq = postJSON(CONFIG.APPLY_EMAIL_URL, {
+      _subject: 'New SSF application: ' + data.firstName + ' ' + data.lastName,
+      _template: 'table',
+      name: data.firstName + ' ' + data.lastName,
+      email: data.email,
+      phone: data.phone,
+      source: 'Apply popup - sweetsuccessfundraising.com',
+      submitted_at: new Date().toISOString(),
+    }, null, 90000).then(r => r.ok ? r.json() : Promise.reject(new Error('email HTTP ' + r.status)))
+      .then(j => (j && (j.success === true || j.success === 'true')) ? true : Promise.reject(new Error('email not confirmed')));
+    const dbReq = postJSON(CONFIG.SUPABASE_URL + '/rest/v1/rpc/ssf_apply_popup', {
+      p_first_name: data.firstName, p_last_name: data.lastName, p_email: data.email, p_phone: data.phone,
+    }, { apikey: CONFIG.SUPABASE_PUBLISHABLE_KEY })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error('db HTTP ' + r.status)))
+      .then(j => (j && j.ok === true) ? true : Promise.reject(new Error('db not confirmed')));
+    emailReq.catch(e => console.warn('Apply email failed', e));
+    dbReq.catch(e => console.warn('Apply save failed', e));
+    const received = await new Promise(resolve => {
+      let failed = 0;
+      [emailReq, dbReq].forEach(p => p.then(() => resolve(true), () => { if (++failed === 2) resolve(false); }));
+    });
     btn.classList.remove('loading');
+    btn.disabled = false;
+    if (received) {
+      document.getElementById('popupFormWrap').style.display = 'none';
+      document.getElementById('popSuccessEmail').textContent = data.email;
+      document.getElementById('popupSuccess').classList.add('visible');
+    } else {
+      errEl.textContent = "Sorry, that didn't go through. Please email obrien71@gmail.com directly.";
+      errEl.style.display = 'block';
+    }
   }
   document.querySelectorAll('.popup-input').forEach(el => el.addEventListener('input', () => el.classList.remove('invalid')));
 
