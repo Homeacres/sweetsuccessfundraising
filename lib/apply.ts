@@ -1,6 +1,6 @@
 import { checkServiceArea, formatPostal } from "@/lib/area";
 import { deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
-import { parseParticipantCount, resolveOrganizerSport } from "@/lib/apply-sport";
+import { parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable } from "@/lib/apply-sport";
 import { bagEstimate, type BagEstimate } from "@/lib/estimate";
 import { dollarsToCents } from "@/lib/money";
 import { listSports, serviceProvinces } from "@/lib/catalog";
@@ -68,7 +68,17 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
   const summary = bagEstimate(input.goalDollars, participants.count);
   if (!summary) return { ok: false, error: "Enter a goal of at least $100.", status: 400 };
 
-  const sports = await listSports();
+  let sports;
+  try {
+    sports = await listSports();
+  } catch (error) {
+    console.error("sport list failed", error instanceof Error ? error.message : "error");
+    return { ok: false, error: SPORT_LIST_ERROR, status: 503 };
+  }
+  if (sportListUnavailable(sports)) {
+    console.error("sport list failed: no sports with product names");
+    return { ok: false, error: SPORT_LIST_ERROR, status: 503 };
+  }
   const resolvedSport = resolveOrganizerSport(
     input.sport,
     input.sportOther,

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { SportField } from "@/components/SportField";
+import { OTHER_SPORT, SPORT_LIST_ERROR, type SportChoice } from "@/lib/apply-sport";
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";
 import { formatCad } from "@/lib/money";
@@ -16,11 +18,10 @@ const HEARD = [
   "Other",
 ];
 
-type Sport = { sport_name: string; emoji: string | null };
 type Price = { code: string; name: string; priceCents: number; teamShareCents: number };
 type Done = "saved" | "already" | "away";
 
-export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[] }) {
+export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice[]; prices: Price[]; sportsError: boolean }) {
   const [consent, setConsent] = useState(false);
   const [company, setCompany] = useState("");
   const [sport, setSport] = useState("");
@@ -31,13 +32,14 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
   const [emailed, setEmailed] = useState(false);
   const [summary, setSummary] = useState<BagEstimate | null>(null);
 
-  const options = sports.some((item) => item.sport_name === "Other")
-    ? sports
-    : [...sports, { sport_name: "Other", emoji: null }];
-
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (sportsError) return;
     setError(null);
+    if (!sport) {
+      setError("Choose a sport from the list.");
+      return;
+    }
     const form = new FormData(event.currentTarget);
     setPending(true);
     try {
@@ -51,7 +53,7 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
           phone: form.get("phone"),
           team: form.get("team"),
           sport,
-          sportOther: sport === "Other" ? sportOther : "",
+          sportOther: sport === OTHER_SPORT ? sportOther : "",
           city: form.get("city"),
           postal: form.get("postal"),
           participants: form.get("participants"),
@@ -144,16 +146,13 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
       <input id="phone" name="phone" type="tel" autoComplete="tel" />
       <label htmlFor="team">Club or team</label>
       <input id="team" name="team" required />
-      <label htmlFor="sport">Sport or activity</label>
-      <select id="sport" name="sport" required value={sport} onChange={(event) => setSport(event.target.value)}>
-        <option value="" disabled>Select a sport</option>
-        {options.map((item) => (
-          <option key={item.sport_name} value={item.sport_name}>
-            {item.emoji ? `${item.emoji} ` : ""}{item.sport_name}
-          </option>
-        ))}
-      </select>
-      {sport === "Other" ? (
+      <label id="sport-label" htmlFor="sport">Sport or activity</label>
+      {sportsError ? (
+        <p id="sport" className="alert error" role="alert">{SPORT_LIST_ERROR}</p>
+      ) : (
+        <SportField id="sport" labelId="sport-label" options={sports} value={sport} onChange={setSport} />
+      )}
+      {sport === OTHER_SPORT ? (
         <>
           <label htmlFor="sportOther">Which sport or activity?</label>
           <input
@@ -200,7 +199,7 @@ export function ApplyForm({ sports, prices }: { sports: Sport[]; prices: Price[]
         <input id="company" name="company" tabIndex={-1} autoComplete="off" value={company} onChange={(event) => setCompany(event.target.value)} />
       </div>
       {error && <div className="alert error" role="alert">{error}</div>}
-      <button className="btn btn-navy" type="submit" disabled={pending}>
+      <button className="btn btn-navy" type="submit" disabled={pending || sportsError}>
         {pending ? "Sending…" : "Apply"}
       </button>
       <p className="fine">Your information is saved to Sweet Success and used to set up the fundraiser. It is not sold. The updates box starts unchecked.</p>

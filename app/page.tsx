@@ -1,20 +1,36 @@
 import { ApplyForm } from "@/components/ApplyForm";
 import { ProductPhotoView } from "@/components/ProductPhoto";
 import { bearsPhoto, fruitChewsPhoto, spheresPhoto } from "@/components/product-photos";
-import { listSports, publicBagPrices, type PublicBagPrice, type SportOption } from "@/lib/catalog";
+import { sportListUnavailable, type SportChoice } from "@/lib/apply-sport";
+import { listSports, publicBagPrices, type PublicBagPrice } from "@/lib/catalog";
 import { supabaseConfigured } from "@/lib/env";
 import { formatCad } from "@/lib/money";
 
 export default async function HomePage() {
-  let sports: SportOption[] = [];
+  let sports: SportChoice[] = [];
   let prices: PublicBagPrice[] = [];
-  let configured = supabaseConfigured();
-  if (configured) {
+  let sportsError = false;
+  const configured = supabaseConfigured();
+  if (!configured) {
+    sportsError = true;
+    console.error("sport list failed: supabase is not configured");
+  } else {
     try {
-      [sports, prices] = await Promise.all([listSports(), publicBagPrices()]);
+      prices = await publicBagPrices();
     } catch (error) {
-      console.error("landing data failed", error instanceof Error ? error.message : "error");
-      configured = false;
+      console.error("landing prices failed", error instanceof Error ? error.message : "error");
+    }
+    try {
+      sports = await listSports();
+      if (sportListUnavailable(sports)) {
+        sports = [];
+        sportsError = true;
+        console.error("sport list failed: no sports with product names");
+      }
+    } catch (error) {
+      sports = [];
+      sportsError = true;
+      console.error("sport list failed", error instanceof Error ? error.message : "error");
     }
   }
 
@@ -45,7 +61,7 @@ export default async function HomePage() {
           </div>
           <div>
             {!configured && <p className="lede">The application form needs the server environment before it can save.</p>}
-            <ApplyForm sports={sports} prices={prices} />
+            <ApplyForm sports={sports} prices={prices} sportsError={sportsError} />
           </div>
         </div>
       </section>

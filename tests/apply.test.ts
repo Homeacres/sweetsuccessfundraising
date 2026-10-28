@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { deliverApplyNotices, planApplicantNotices, applyEmailsWillSend, APPLY_ADMIN_FALLBACK } from "@/lib/apply-email";
-import { parseParticipantCount, resolveOrganizerSport } from "@/lib/apply-sport";
+import { applySportOptions, parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable, type SportCatalogRow } from "@/lib/apply-sport";
 import { bagEstimate, bagEstimateFromStoredCents, bagsEach, totalBagsForGoalCents, totalBagsForGoalDollars } from "@/lib/estimate";
 import { applicationApplicantEmail } from "@/lib/email/copy";
 import { dollarsToCents } from "@/lib/money";
@@ -20,18 +20,82 @@ describe("apply form before submit", () => {
   });
 });
 
+const SPORT_NAMES = [
+  "Hockey",
+  "Soccer",
+  "Basketball",
+  "Football",
+  "Baseball",
+  "Volleyball",
+  "Ringette",
+  "Figure Skating",
+  "Dance",
+  "Gymnastics",
+  "Swimming",
+  "Lacrosse",
+  "Rugby",
+  "Softball",
+  "Martial Arts",
+  "Skiing",
+  "Cheer",
+  "Music",
+  "Community/School",
+  "Other",
+];
+
+function catalogRow(name: string, sortOrder: number, extras?: Partial<SportCatalogRow>): SportCatalogRow {
+  return { sport_name: name, emoji: null, sort_order: sortOrder, is_active: true, nameCount: 3, ...extras };
+}
+
 describe("sport dropdown", () => {
   it("offers Other and stores a typed activity with the Other prefix", () => {
     const source = readFileSync("components/ApplyForm.tsx", "utf8");
-    expect(source).toContain('sport_name: "Other"');
     expect(source).toContain('id="sportOther"');
-    expect(source).toContain("sport === \"Other\"");
+    expect(source).toContain("sport === OTHER_SPORT");
+    expect(source).not.toContain("Hockey");
     expect(resolveOrganizerSport("Hockey", "", active)).toEqual({ ok: true, sport: "Hockey" });
     expect(resolveOrganizerSport("Other", "Curling", active)).toEqual({ ok: true, sport: "Other: Curling" });
     expect(resolveOrganizerSport("Other", "Curling", ["Hockey"])).toEqual({ ok: true, sport: "Other: Curling" });
     expect(resolveOrganizerSport("Other", "", active).ok).toBe(false);
     expect(resolveOrganizerSport("Curling", "", active).ok).toBe(false);
     expect(resolveOrganizerSport("Other: Curling", "", active).ok).toBe(false);
+  });
+
+  it("lists real sports that have product names, then one Other", () => {
+    const rows = SPORT_NAMES.map((name, index) => catalogRow(name, index + 1));
+    rows.push(catalogRow("Curling", 0, { nameCount: 0 }));
+    rows.push(catalogRow("Inactive League", 21, { is_active: false }));
+    rows.push(catalogRow("Other", 99));
+    const names = applySportOptions(rows).map((option) => option.sport_name);
+    expect(names.length).toBeGreaterThan(2);
+    expect(names.filter((name) => name === "Other")).toEqual(["Other"]);
+    expect(names.at(-1)).toBe("Other");
+    expect(names.slice(0, -1)).toEqual(SPORT_NAMES.slice(0, -1));
+    expect(names).not.toContain("Curling");
+    expect(names).not.toContain("Inactive League");
+    const catalog = readFileSync("lib/catalog.ts", "utf8");
+    expect(catalog).toContain("sport_product_names!inner");
+    expect(catalog).toContain("applySportOptions");
+  });
+
+  it("shows an error instead of a lone Other when the sport list fails", () => {
+    const form = readFileSync("components/ApplyForm.tsx", "utf8");
+    const page = readFileSync("app/page.tsx", "utf8");
+    const apply = readFileSync("lib/apply.ts", "utf8");
+    expect(SPORT_LIST_ERROR).toBe("We couldn't load the sport list. Please refresh or email us.");
+    expect(form).toContain("{SPORT_LIST_ERROR}");
+    expect(form).toContain("disabled={pending || sportsError}");
+    expect(form).toContain('role="alert"');
+    expect(page).toContain('console.error("sport list failed');
+    expect(page).toContain("sportsError");
+    expect(apply).toContain("error: SPORT_LIST_ERROR");
+    expect(sportListUnavailable(null)).toBe(true);
+    expect(sportListUnavailable([])).toBe(true);
+    expect(sportListUnavailable([{ sport_name: "Other", emoji: null }])).toBe(true);
+    expect(sportListUnavailable(applySportOptions([catalogRow("Hockey", 1), catalogRow("Soccer", 2)]))).toBe(false);
+    const onlyOther = applySportOptions([catalogRow("Other", 1), catalogRow("Curling", 2, { nameCount: 0 })]);
+    expect(onlyOther.map((option) => option.sport_name)).toEqual(["Other"]);
+    expect(sportListUnavailable(onlyOther)).toBe(true);
   });
 });
 

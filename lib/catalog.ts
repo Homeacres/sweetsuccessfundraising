@@ -1,4 +1,5 @@
 import { productPhotoForSort, type ProductPhoto } from "@/components/product-photos";
+import { applySportOptions, OTHER_SPORT, type SportCatalogRow } from "@/lib/apply-sport";
 import { jsonbInt } from "@/lib/money";
 import { publicCatalogProduct, type PublicProduct } from "@/lib/public-names";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -38,11 +39,25 @@ export async function publicBagPrices(): Promise<PublicBagPrice[]> {
 export async function listSports(): Promise<SportOption[]> {
   const { data, error } = await supabaseAdmin()
     .from("sports")
-    .select("sport_name, emoji")
+    .select("sport_name, emoji, sort_order, sport_product_names!inner(product_id)")
     .eq("is_active", true)
+    .neq("sport_name", OTHER_SPORT)
     .order("sort_order");
   if (error) throw error;
-  return data ?? [];
+  const rows = (data ?? []) as {
+    sport_name: string;
+    emoji: string | null;
+    sort_order: number | null;
+    sport_product_names: { product_id: string }[] | null;
+  }[];
+  const catalog: SportCatalogRow[] = rows.map((row) => ({
+    sport_name: row.sport_name,
+    emoji: row.emoji,
+    sort_order: row.sort_order ?? 0,
+    is_active: true,
+    nameCount: Array.isArray(row.sport_product_names) ? Math.max(row.sport_product_names.length, 1) : 1,
+  }));
+  return applySportOptions(catalog);
 }
 
 export async function serviceProvinces(): Promise<string[]> {
