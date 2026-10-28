@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SportField } from "@/components/SportField";
+import { applyThanksHeading } from "@/lib/apply-heading";
 import { OTHER_SPORT, SPORT_LIST_ERROR, type SportChoice } from "@/lib/apply-sport";
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";
@@ -21,6 +22,32 @@ const HEARD = [
 type Price = { code: string; name: string; priceCents: number; teamShareCents: number };
 type Done = "saved" | "already" | "away";
 
+export function ApplyConfirmation({
+  firstName,
+  summary,
+  emailed,
+}: {
+  firstName: string;
+  summary: BagEstimate | null;
+  emailed: boolean;
+}) {
+  const lines = summary ? estimateSentences(summary) : null;
+  return (
+    <div className="card" id="apply">
+      <h2>{applyThanksHeading(firstName)}</h2>
+      <p>We saved your application. We'll confirm your campaign within 48 hours.</p>
+      {lines ? (
+        <>
+          <p>{lines.intro}</p>
+          <p>{lines.total}</p>
+          <p>{lines.each}</p>
+        </>
+      ) : null}
+      {emailed ? <p>We emailed you a confirmation.</p> : null}
+    </div>
+  );
+}
+
 export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice[]; prices: Price[]; sportsError: boolean }) {
   const [consent, setConsent] = useState(false);
   const [company, setCompany] = useState("");
@@ -31,6 +58,7 @@ export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice
   const [done, setDone] = useState<Done | null>(null);
   const [emailed, setEmailed] = useState(false);
   const [summary, setSummary] = useState<BagEstimate | null>(null);
+  const [thanksName, setThanksName] = useState("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,6 +69,7 @@ export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice
       return;
     }
     const form = new FormData(event.currentTarget);
+    setThanksName(String(form.get("firstName") || ""));
     setPending(true);
     try {
       const response = await fetch("/api/apply", {
@@ -86,21 +115,7 @@ export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice
   }
 
   if (done === "saved") {
-    const lines = summary ? estimateSentences(summary) : null;
-    return (
-      <div className="card" id="apply">
-        <h2>You're in the pipeline</h2>
-        <p>We saved your application. We'll confirm your campaign within 48 hours.</p>
-        {lines ? (
-          <>
-            <p>{lines.intro}</p>
-            <p>{lines.total}</p>
-            <p>{lines.each}</p>
-          </>
-        ) : null}
-        {emailed ? <p>We emailed you a confirmation.</p> : null}
-      </div>
-    );
+    return <ApplyConfirmation firstName={thanksName} summary={summary} emailed={emailed} />;
   }
 
   if (done) {

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { applyThanksHeading } from "@/lib/apply-heading";
 import { deliverApplyNotices, planApplicantNotices, applyEmailsWillSend, APPLY_ADMIN_FALLBACK } from "@/lib/apply-email";
 import { applySportOptions, parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable, type SportCatalogRow } from "@/lib/apply-sport";
 import { bagEstimate, bagEstimateFromStoredCents, bagsEach, totalBagsForGoalCents, totalBagsForGoalDollars } from "@/lib/estimate";
@@ -144,7 +145,13 @@ describe("apply email", () => {
 
   it("includes the estimate sentences and no source brand", () => {
     const message = applicationApplicantEmail({ firstName: "Pat", team: "Hawks", summary });
+    expect(applyThanksHeading("Pat")).toBe("Thanks, Pat! Here's your estimate.");
+    expect(message.html).toContain("Thanks, Pat! Here's your estimate.");
+    expect(message.text).toContain("Thanks, Pat! Here's your estimate.");
     expect(message.subject).toBe("We received your Sweet Success application");
+    expect(readFileSync("components/ApplyForm.tsx", "utf8")).toContain("applyThanksHeading");
+    expect(readFileSync("components/ApplyForm.tsx", "utf8")).not.toContain("pipeline");
+    expect(readFileSync("lib/email/copy.ts", "utf8")).not.toContain("pipeline");
     expect(message.text).toContain("These are estimates.");
     expect(message.text).toContain("about 400 bags");
     expect(message.text).toContain("About 20 bags each.");
@@ -174,6 +181,8 @@ describe("apply email", () => {
     expect(applyEmailsWillSend({})).toBe(false);
     expect(applyEmailsWillSend({ APPLY_EMAILS_ENABLED: "true" })).toBe(false);
     expect(applyEmailsWillSend({ APPLY_EMAILS_ENABLED: "yes", RESEND_API_KEY: "re_test" })).toBe(true);
+    expect(applyEmailsWillSend({ EMAIL_TEST_RECIPIENT: "qa@example.com" })).toBe(false);
+    expect(applyEmailsWillSend({ EMAIL_TEST_RECIPIENT: "qa@example.com", RESEND_API_KEY: "re_test" })).toBe(true);
 
     const send = async () => {
       throw new Error("send should not be called");

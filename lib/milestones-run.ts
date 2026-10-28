@@ -1,5 +1,5 @@
 import { milestoneEmail, type MilestonePlayer } from "@/lib/email/copy";
-import { sendEmail } from "@/lib/email/send";
+import { sendEmail, sentLogStatus } from "@/lib/email/send";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
   dueMilestones,
@@ -176,7 +176,7 @@ async function claimAndSend(input: {
     });
     const { error: updateError } = await db
       .from("email_log")
-      .update({ status: "sent", resend_id: resendId })
+      .update({ status: sentLogStatus(), resend_id: resendId })
       .eq("id", data.id);
     if (updateError) console.error("milestone log update failed", updateError.message);
     return "sent";

@@ -1,15 +1,20 @@
 import type { BagEstimate } from "@/lib/estimate";
 import { applicationApplicantEmail, applicationAdminEmail, type ApplyEmail } from "@/lib/email/copy";
+import { sentLogStatus } from "@/lib/email/send";
 
 export const APPLY_ADMIN_FALLBACK = "obrien71@gmail.com";
 
 export type ApplyEmailEnv = NodeJS.ProcessEnv;
 
-/** Off unless APPLY_EMAILS_ENABLED is true, 1, or yes, and a Resend key is present. */
+/**
+ * Sends when a Resend key is set and either APPLY_EMAILS_ENABLED is on
+ * or EMAIL_TEST_RECIPIENT is set. The test inbox still redirects every message.
+ */
 export function applyEmailsWillSend(env: ApplyEmailEnv): boolean {
   const flag = (env.APPLY_EMAILS_ENABLED || "").trim().toLowerCase();
   const enabled = flag === "true" || flag === "1" || flag === "yes";
-  return enabled && Boolean(env.RESEND_API_KEY?.trim());
+  const test = Boolean(env.EMAIL_TEST_RECIPIENT?.trim());
+  return Boolean(env.RESEND_API_KEY?.trim()) && (enabled || test);
 }
 
 export function applyAdminRecipient(env: ApplyEmailEnv): string {
@@ -93,7 +98,7 @@ export async function deliverApplyNotices(input: {
       await input.log({
         email_type: notice.emailType,
         recipient: notice.to,
-        status: "sent",
+        status: sentLogStatus(input.env),
         resend_id: resendId,
       });
     } catch (error) {

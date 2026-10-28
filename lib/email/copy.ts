@@ -1,3 +1,4 @@
+import { applyThanksHeading } from "@/lib/apply-heading";
 import { formatUserDate } from "@/lib/dates";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";
 import { appUrl } from "@/lib/env";
@@ -88,7 +89,7 @@ export function applicationApplicantEmail(input: {
 <p>${escapeHtml(lines.total)}</p>
 <p>${escapeHtml(lines.each)}</p>
 <p>Questions? Email <a href="mailto:hello@sweetsuccessfundraising.com">hello@sweetsuccessfundraising.com</a>.</p>`;
-  const wrapped = shell("You're in the pipeline", html, text);
+  const wrapped = shell(applyThanksHeading(input.firstName), html, text);
   return { subject: "We received your Sweet Success application", ...wrapped };
 }
 

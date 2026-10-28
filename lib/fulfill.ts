@@ -1,6 +1,6 @@
 import { receiptEmail, type ReceiptLine } from "@/lib/email/copy";
 import { receiptCandyName } from "@/lib/public-names";
-import { sendEmail } from "@/lib/email/send";
+import { sendEmail, sentLogStatus } from "@/lib/email/send";
 import { playerDisplayName } from "@/lib/names";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import type { PaidOrder, RefundedOrder } from "@/lib/webhook";
@@ -121,7 +121,7 @@ export async function sendOrderReceipt(order: PaidOrder): Promise<void> {
       recipient: order.buyerEmail.toLowerCase(),
       campaign_id: order.campaignId,
       resend_id: resendId,
-      status: "sent",
+      status: sentLogStatus(),
     })
     .then(({ error: logError }) => {
       if (logError) console.error("receipt log failed", logError.message);
