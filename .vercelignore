@@ -1,0 +1,4 @@
+# Legacy GitHub Pages handlers. They are truncated and are not part of the Next.js app.
+# Leaving them out of the upload keeps Vercel from building them as extra functions
+# beside app/api, which would fail the deployment on a syntax error.
+api/*.js
