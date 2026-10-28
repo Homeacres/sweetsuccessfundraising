@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdminNav } from "@/components/AdminNav";
 import { isAdminRequest } from "@/lib/admin-auth";
 import { formatUserDate } from "@/lib/dates";
 import { formatCad } from "@/lib/money";
@@ -21,6 +22,7 @@ export default async function AdminHome() {
         <h1>Campaigns</h1>
         <form action="/api/admin/logout" method="post"><button className="btn btn-ghost" type="submit">Sign out</button></form>
       </div>
+      <AdminNav />
       <div className="table-wrap panel">
         <table>
           <thead>

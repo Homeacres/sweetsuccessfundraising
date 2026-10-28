@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AdminNav } from "@/components/AdminNav";
 import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/PrintButton";
 import { isAdminRequest } from "@/lib/admin-auth";
@@ -78,7 +78,7 @@ export default async function CampaignAdminPage({
 
   return (
     <main className="page wrap">
-      <p className="no-print"><Link href="/admin">All campaigns</Link></p>
+      <AdminNav />
       <div className="page-head">
         <div>
           <h1>{campaign.campaign_name}</h1>
