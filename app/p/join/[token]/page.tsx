@@ -1,4 +1,4 @@
-import { ParentSignupForm } from "@/components/FlowScreens";
+import { ParentSignupDone, ParentSignupForm } from "@/components/FlowScreens";
 import { CopyLink } from "@/components/CopyLink";
 import { appUrl, supabaseConfigured } from "@/lib/env";
 import { organizerActionSecret, verifyOrganizerAction } from "@/lib/organizer-token";
@@ -7,7 +7,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Sign up your participant", robots: { index: false, follow: false } };
 
-export default async function JoinPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ done?: string }> }) {
+export default async function JoinPage({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ done?: string; add?: string }> }) {
   const { token } = await params;
   const query = await searchParams;
   const secret = organizerActionSecret();
@@ -29,6 +29,17 @@ export default async function JoinPage({ params, searchParams }: { params: Promi
         href: `${appUrl()}${sharePath(row.team_slug, person.player_slug)}`,
       }));
     }
+  }
+  const done = query.done === "1";
+  const adding = query.add === "1";
+  if (done && !adding) {
+    return (
+      <ParentSignupDone
+        team={team}
+        links={links}
+        addHref={`/p/join/${token}?done=1&add=1`}
+      />
+    );
   }
   return (
     <>

@@ -1,3 +1,4 @@
+import { CopyLink } from "@/components/CopyLink";
 import { LEADERBOARD_OPT_IN_LABEL } from "@/lib/launch";
 import { starSellerLine } from "@/lib/standings";
 
@@ -88,6 +89,23 @@ export function AcceptWindow(props: { team: string; windowLabel: string; token: 
 }
 
 export const PARENT_OPT_IN_LABEL = LEADERBOARD_OPT_IN_LABEL;
+
+export function ParentSignupDone(props: {
+  team: string;
+  links: { name: string; href: string }[];
+  addHref: string;
+}) {
+  return (
+    <main className="page wrap">
+      <h1>You're signed up</h1>
+      <p className="sub">{props.team}. Share each participant's link.</p>
+      {props.links.map((item) => (
+        <CopyLink key={item.href} label={item.name} href={item.href} />
+      ))}
+      <p className="fine"><a href={props.addHref}>Add another child</a></p>
+    </main>
+  );
+}
 
 export function ParentSignupForm(props: { team: string; token: string }) {
   return (
