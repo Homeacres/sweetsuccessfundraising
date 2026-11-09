@@ -17,8 +17,8 @@ function esc(value: string): string {
 
 function ending(unsubscribeUrl: string): { text: string; html: string } {
   return {
-    text: `Or just reply with any questions.\n\nThanks,\n${SIGN_OFF_NAME}\nUnsubscribe: ${unsubscribeUrl}`,
-    html: `<p>Or just reply with any questions.</p>
+    text: `Questions? Email hello@sweetsuccessfundraising.com.\n\nThanks,\n${SIGN_OFF_NAME}\nUnsubscribe: ${unsubscribeUrl}`,
+    html: `<p>Questions? <a href="mailto:hello@sweetsuccessfundraising.com">Email hello@sweetsuccessfundraising.com</a></p>
 <p>Thanks,<br>${esc(SIGN_OFF_NAME)}</p>
 <p><a href="${esc(unsubscribeUrl)}">Unsubscribe</a></p>`,
   };

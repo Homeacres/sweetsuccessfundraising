@@ -67,9 +67,9 @@ function button(url: string): string {
 
 function signOff(fields: ProspectFields): { text: string; html: string } {
   return {
-    text: `Start my fundraiser: ${fields.startUrl}\n\nOr just reply with any questions.\n\nThanks,\n${SIGN_OFF_NAME}\nUnsubscribe: ${fields.unsubscribeUrl}`,
+    text: `Start my fundraiser: ${fields.startUrl}\n\nQuestions? Email hello@sweetsuccessfundraising.com.\n\nThanks,\n${SIGN_OFF_NAME}\nUnsubscribe: ${fields.unsubscribeUrl}`,
     html: `${button(fields.startUrl)}
-<p>Or just reply with any questions.</p>
+<p>Questions? <a href="mailto:hello@sweetsuccessfundraising.com">Email hello@sweetsuccessfundraising.com</a></p>
 <p>Thanks,<br>${escapeHtml(SIGN_OFF_NAME)}</p>
 <p style="font-size:12px;"><a href="${escapeHtml(fields.unsubscribeUrl)}">Unsubscribe</a></p>`,
   };
@@ -105,7 +105,7 @@ export function prospectQuoteEmail(fields: ProspectFields, replyTo?: string | nu
 ${activity}
 Thanks for reaching out. Good luck to ${fields.teamName}.
 
-Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} per participant. Fewer if supporters pick premium.
+Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} bags per participant. Fewer if supporters pick premium.
 
 ${BAG_PRICE_LINE}
 
@@ -115,7 +115,7 @@ ${signOff(fields).text}`;
   const html = `<p>Hi ${escapeHtml(fields.firstName)},</p>
 <p>${escapeHtml(activity)}</p>
 <p>Thanks for reaching out. Good luck to ${escapeHtml(fields.teamName)}.</p>
-<p>Here's your estimate. To raise ${escapeHtml(fields.goal)}, your group would sell about ${escapeHtml(fields.bags)} bags, which is about ${escapeHtml(fields.bagsEach)} per participant. Fewer if supporters pick premium.</p>
+<p>Here's your estimate. To raise ${escapeHtml(fields.goal)}, your group would sell about ${escapeHtml(fields.bags)} bags, which is about ${escapeHtml(fields.bagsEach)} bags per participant. Fewer if supporters pick premium.</p>
 <p>${escapeHtml(BAG_PRICE_LINE)}</p>
 <p>Prices include GST. Single bags only for now.</p>
 ${signOff(fields).html}`;

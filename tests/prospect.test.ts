@@ -41,7 +41,9 @@ describe("prospect copy", () => {
     expect(quote.subject).toBe("Your Hawks fundraising estimate");
     expect(quote.preview).toBe("About 400 bags to raise $2,000.");
     expect(quote.text).toContain("Hi Pat,");
-    expect(quote.text).toContain("about 400 bags, which is about 20 per participant");
+    expect(quote.text).toContain("about 400 bags, which is about 20 bags per participant");
+    expect(quote.text).toContain("Questions? Email hello@sweetsuccessfundraising.com.");
+    expect(quote.html).toContain('href="mailto:hello@sweetsuccessfundraising.com"');
     expect(quote.text).toContain("Bags start at $12 (GST included), and your group makes $5 or more on every bag sold. That's at least 40% of every sale.");
     expect(quote.text).toContain("We love working with local groups like yours.");
     expect(quote.text).not.toContain("keeps $5");
@@ -59,7 +61,8 @@ describe("prospect copy", () => {
     expect(day2.text).toContain("20 per participant");
 
     expect(prospectDay5Email(fields).subject).toBe("Any questions before you start?");
-    expect(prospectDay5Email(fields).text).toContain("Or just reply with any questions.");
+    expect(prospectDay5Email(fields).text).toContain("Questions? Email hello@sweetsuccessfundraising.com.");
+    expect(prospectDay5Email(fields).text).not.toContain("Or just reply");
     const last = prospectDay10Email(fields);
     expect(last.subject).toBe("Should we close your Hawks estimate?");
     expect(last.text).toContain("We won't email again");

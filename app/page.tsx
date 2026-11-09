@@ -55,7 +55,7 @@ export default async function HomePage() {
       <section className="section alt" id="how">
         <div className="wrap">
           <p className="kicker">The process</p>
-          <h2>Up and running in 48 hours</h2>
+          <h2>Up and running fast</h2>
           <p className="sub">From the first quote to the first sale. We handle the shop. You hand out the order.</p>
           <p>{TEAM_KEEP_ABOUT} {TEAM_PAYOUT_ROUND}</p>
           <div className="grid-3" style={{ marginTop: 28 }}>

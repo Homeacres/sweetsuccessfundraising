@@ -194,7 +194,7 @@ describe("apply email", () => {
     expect(readFileSync("components/ApplyForm.tsx", "utf8")).not.toContain("pipeline");
     expect(message.subject).toBe("Your Hawks fundraising estimate");
     expect(message.text).toContain("about 400 bags");
-    expect(message.text).toContain("about 20 per participant");
+    expect(message.text).toContain("about 20 bags per participant");
     expect(message.text).toContain("Start my fundraiser:");
     expect(message.html).toContain("Start my fundraiser");
     expect(message.html).toContain("Unsubscribe");

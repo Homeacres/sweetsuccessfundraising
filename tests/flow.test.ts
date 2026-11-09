@@ -61,7 +61,10 @@ describe("emails 12 to 15", () => {
     const wrap = wrapUpEmail(base);
     expect(wrap.text).toContain("together you raised $800.00 (40% of the goal)");
     expect(wrap.subject).toBe("Thank you from Hawks!");
-    expect(under.text).toContain("Or just reply with any questions.");
+    expect(under.text).toContain("Questions? Email hello@sweetsuccessfundraising.com.");
+    expect(under.html).toContain('href="mailto:hello@sweetsuccessfundraising.com"');
+    expect(readFileSync("app/page.tsx", "utf8")).toContain("Up and running fast");
+    expect(readFileSync("app/page.tsx", "utf8")).not.toContain("48 hours");
     expect(under.text).toContain("The Sweet Success Family");
   });
 });
