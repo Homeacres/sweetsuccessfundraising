@@ -15,7 +15,7 @@ import { formatUserDate } from "@/lib/dates";
 import { prospectFields, prospectQuoteEmail } from "@/lib/email/prospect";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";
 import { appUrl } from "@/lib/env";
-import { formatCad } from "@/lib/money";
+import { formatCad, formatTeamCad } from "@/lib/money";
 import { playerDisplayName } from "@/lib/names";
 import { MILESTONE_SUBJECT, type MilestoneName } from "@/lib/milestones";
 
@@ -68,7 +68,7 @@ export function applicationAdminEmail(input: {
     ["City", input.city || "—"],
     ["Postal code", input.postal],
     ["Participants", String(input.participants)],
-    ["Goal", formatCad(Math.round(input.goalDollars * 100))],
+    ["Goal", formatTeamCad(Math.round(input.goalDollars) * 100)],
     ["Heard about us", input.howHeard || "—"],
     ["CASL consent", input.consent ? "Yes" : "No"],
     ["Estimate", estimatePlain(input.summary)],
@@ -188,7 +188,7 @@ export function milestoneEmail(input: {
   const stats = input.players
     .map(
       (player) =>
-        `${playerDisplayName(player.first, player.last, player.hideLastName)}: ${player.bags} bags, ${formatCad(player.teamCents)} for the team`,
+        `${playerDisplayName(player.first, player.last, player.hideLastName)}: ${player.bags} bags, ${formatTeamCad(player.teamCents)} for the team`,
     )
     .join("\n");
   const text = `Hi ${input.parentFirst},\n\n${intro[input.kind]}\n\n${stats}\n\nPrivate leaderboard: ${boardUrl}\n\nYou can stop these updates (order receipts still arrive): ${unsubscribeUrl}`;
@@ -197,7 +197,7 @@ export function milestoneEmail(input: {
 <ul>${input.players
     .map(
       (player) =>
-        `<li>${escapeHtml(playerDisplayName(player.first, player.last, player.hideLastName))}: ${player.bags} bags, ${formatCad(player.teamCents)} for the team</li>`,
+        `<li>${escapeHtml(playerDisplayName(player.first, player.last, player.hideLastName))}: ${player.bags} bags, ${formatTeamCad(player.teamCents)} for the team</li>`,
     )
     .join("")}</ul>
 <p><a href="${boardUrl}">Open the private leaderboard</a></p>

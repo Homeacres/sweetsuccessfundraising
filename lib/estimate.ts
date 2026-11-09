@@ -44,8 +44,9 @@ function formatGoal(dollars: number): string {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
     currency: "CAD",
-    maximumFractionDigits: Number.isInteger(dollars) ? 0 : 2,
-  }).format(dollars);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(dollars));
 }
 
 function bagWord(count: number): string {

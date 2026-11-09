@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/PrintButton";
 import { isAdminRequest } from "@/lib/admin-auth";
 import { formatUserDate } from "@/lib/dates";
-import { formatCad } from "@/lib/money";
+import { formatCad, formatTeamCad } from "@/lib/money";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Close-out", robots: { index: false, follow: false } };
@@ -93,7 +93,7 @@ export default async function CampaignAdminPage({
       {errorFlag && <p className="alert error">That action didn't save. Try again.</p>}
 
       <div className="grid-3" style={{ margin: "16px 0" }}>
-        <article className="panel"><h3>Team keeps</h3><p>{formatCad(campaign.team_raised_cents)} of {formatCad(campaign.goal_cad)}</p></article>
+        <article className="panel"><h3>Team keeps</h3><p>{formatTeamCad(campaign.team_raised_cents)} of {formatTeamCad(campaign.goal_cad)}</p></article>
         <article className="panel"><h3>Gross paid</h3><p>{formatCad(campaign.total_raised_cad)}</p></article>
         <article className="panel">
           <h3>Paid orders</h3>

@@ -6,8 +6,7 @@ import { applyThanksHeading } from "@/lib/apply-heading";
 import { OTHER_SPORT, SPORT_LIST_ERROR, type SportChoice } from "@/lib/apply-sport";
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";
-import { onPageQuote, prospectFields } from "@/lib/quote-copy";
-import { formatCad } from "@/lib/money";
+import { onPageQuote, prospectFields, TEAM_KEEP_ABOUT, TEAM_PAYOUT_ROUND } from "@/lib/quote-copy";
 
 const HEARD = [
   "Coach or team manager",
@@ -20,7 +19,6 @@ const HEARD = [
   "Other",
 ];
 
-type Price = { code: string; name: string; priceCents: number; teamShareCents: number };
 type Done = "saved" | "already" | "away";
 
 export function ApplyConfirmation({
@@ -47,7 +45,7 @@ export function ApplyConfirmation({
   );
 }
 
-export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice[]; prices: Price[]; sportsError: boolean }) {
+export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; sportsError: boolean }) {
   const [consent, setConsent] = useState(false);
   const [company, setCompany] = useState("");
   const [sport, setSport] = useState("");
@@ -134,16 +132,7 @@ export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice
     <form className="card" id="apply" onSubmit={onSubmit}>
       <h2>Apply to run a fundraiser</h2>
       <p className="hint">Tell us about the team. We'll confirm your campaign within 48 hours. No upfront cost.</p>
-      {prices.length > 0 && (
-        <ul className="prices">
-          {prices.map((price) => (
-            <li key={price.code}>
-              <strong>{price.name}</strong>
-              <div>{formatCad(price.priceCents)} each · team keeps {formatCad(price.teamShareCents)}</div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <p>{TEAM_KEEP_ABOUT} {TEAM_PAYOUT_ROUND}</p>
       <div className="row two">
         <div>
           <label htmlFor="firstName">First name</label>

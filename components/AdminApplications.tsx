@@ -1,5 +1,5 @@
 import { formatUserDate } from "@/lib/dates";
-import { formatCad } from "@/lib/money";
+import { formatTeamCad } from "@/lib/money";
 
 export type ApplicationRow = {
   organizerId: string;
@@ -39,7 +39,7 @@ export function AdminApplicationsTable({ rows }: { rows: ApplicationRow[] }) {
               <td>{row.name}</td>
               <td>{row.team}</td>
               <td>{row.sport}</td>
-              <td>{row.goalCents == null ? "—" : formatCad(row.goalCents)}</td>
+              <td>{row.goalCents == null ? "—" : formatTeamCad(row.goalCents)}</td>
               <td>{row.participants == null ? "—" : row.participants}</td>
               <td>{formatUserDate(row.appliedAt)}</td>
               <td>{row.email}</td>

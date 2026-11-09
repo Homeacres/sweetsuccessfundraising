@@ -1,4 +1,10 @@
 import type { BagEstimate } from "@/lib/estimate";
+import { formatTeamCad } from "@/lib/money";
+
+// COPY: pending CORA review
+export const TEAM_KEEP_ABOUT = "Teams keep about 40% of sales.";
+// COPY: pending CORA review
+export const TEAM_PAYOUT_ROUND = "The payout is always a round dollar amount.";
 
 export type ProspectFields = {
   firstName: string;
@@ -11,11 +17,7 @@ export type ProspectFields = {
 };
 
 export function formatQuoteGoal(dollars: number): string {
-  return new Intl.NumberFormat("en-CA", {
-    style: "currency",
-    currency: "CAD",
-    maximumFractionDigits: Number.isInteger(dollars) ? 0 : 2,
-  }).format(dollars);
+  return formatTeamCad(Math.round(dollars) * 100);
 }
 
 export function prospectFields(input: {
@@ -39,8 +41,7 @@ export function prospectFields(input: {
 export function onPageQuote(fields: Pick<ProspectFields, "goal" | "bags" | "bagsEach">): string[] {
   return [
     `Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} per participant. Fewer if supporters pick premium.`,
-    "Standard bag: $12, your group keeps $5",
-    "Premium bag: $14, your group keeps $6",
-    "Prices include GST. Single bags only for now.",
+    TEAM_KEEP_ABOUT,
+    TEAM_PAYOUT_ROUND,
   ];
 }

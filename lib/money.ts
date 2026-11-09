@@ -5,6 +5,16 @@ export function formatCad(cents: number): string {
   }).format(cents / 100);
 }
 
+/** Team and organizer amounts. Nearest dollar, no cents. Buyer prices stay on formatCad. */
+export function formatTeamCad(cents: number): string {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(cents / 100));
+}
+
 export function dollarsToCents(dollars: number): number {
   return Math.round(dollars * 100);
 }

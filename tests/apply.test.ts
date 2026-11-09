@@ -5,7 +5,8 @@ import { deliverApplyNotices, planApplicantNotices, applyEmailsWillSend, applyAd
 import { applySportOptions, parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable, type SportCatalogRow } from "@/lib/apply-sport";
 import { bagEstimate, bagEstimateFromStoredCents, bagsEach, totalBagsForGoalCents, totalBagsForGoalDollars } from "@/lib/estimate";
 import { applicationApplicantEmail } from "@/lib/email/copy";
-import { dollarsToCents } from "@/lib/money";
+import { dollarsToCents, formatTeamCad } from "@/lib/money";
+import { formatQuoteGoal, onPageQuote, TEAM_KEEP_ABOUT, TEAM_PAYOUT_ROUND } from "@/lib/quote-copy";
 
 const active = ["Hockey", "Soccer", "Other"];
 
@@ -113,6 +114,27 @@ describe("participants", () => {
     expect(parseParticipantCount(201).ok).toBe(false);
     expect(parseParticipantCount(1.5).ok).toBe(false);
     expect(parseParticipantCount(null).ok).toBe(false);
+  });
+});
+
+describe("organizer share copy", () => {
+  it("tells teams they keep about 40 percent and shows whole dollars", () => {
+    const page = readFileSync("app/page.tsx", "utf8");
+    const form = readFileSync("components/ApplyForm.tsx", "utf8");
+    const shop = readFileSync("components/Shop.tsx", "utf8");
+    const quote = onPageQuote({ goal: "$2,000", bags: "400", bagsEach: "20" }).join("\n");
+    expect(page).toContain("TEAM_KEEP_ABOUT");
+    expect(page).toContain("TEAM_PAYOUT_ROUND");
+    expect(form).toContain("TEAM_KEEP_ABOUT");
+    expect(form).not.toContain("teamShareCents");
+    expect(shop).not.toContain("team keeps");
+    expect(quote).toContain(TEAM_KEEP_ABOUT);
+    expect(quote).toContain(TEAM_PAYOUT_ROUND);
+    expect(quote).not.toContain("keeps $5");
+    expect(formatQuoteGoal(2000.4)).toBe(formatTeamCad(200000));
+    expect(formatQuoteGoal(2000.6)).toBe(formatTeamCad(200100));
+    expect(formatTeamCad(149)).toBe(formatTeamCad(100));
+    expect(formatTeamCad(550)).not.toMatch(/\.\d/);
   });
 });
 

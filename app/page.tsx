@@ -2,24 +2,18 @@ import { ApplyForm } from "@/components/ApplyForm";
 import { ProductPhotoView } from "@/components/ProductPhoto";
 import { bearsPhoto, fruitChewsPhoto, spheresPhoto } from "@/components/product-photos";
 import { sportListUnavailable, type SportChoice } from "@/lib/apply-sport";
-import { listSports, publicBagPrices, type PublicBagPrice } from "@/lib/catalog";
+import { listSports } from "@/lib/catalog";
 import { supabaseConfigured } from "@/lib/env";
-import { formatCad } from "@/lib/money";
+import { TEAM_KEEP_ABOUT, TEAM_PAYOUT_ROUND } from "@/lib/quote-copy";
 
 export default async function HomePage() {
   let sports: SportChoice[] = [];
-  let prices: PublicBagPrice[] = [];
   let sportsError = false;
   const configured = supabaseConfigured();
   if (!configured) {
     sportsError = true;
     console.error("sport list failed: supabase is not configured");
   } else {
-    try {
-      prices = await publicBagPrices();
-    } catch (error) {
-      console.error("landing prices failed", error instanceof Error ? error.message : "error");
-    }
     try {
       sports = await listSports();
       if (sportListUnavailable(sports)) {
@@ -49,19 +43,11 @@ export default async function HomePage() {
               <div><strong>$0</strong><span>upfront to the team</span></div>
               <div><strong>$0</strong><span>cash to handle</span></div>
             </div>
-            {prices.length > 0 && (
-              <ul className="prices">
-                {prices.map((price) => (
-                  <li key={price.code}>
-                    {price.name}: {formatCad(price.priceCents)} a bag. The team keeps {formatCad(price.teamShareCents)}.
-                  </li>
-                ))}
-              </ul>
-            )}
+            <p>{TEAM_KEEP_ABOUT} {TEAM_PAYOUT_ROUND}</p>
           </div>
           <div>
             {!configured && <p className="lede">The application form needs the server environment before it can save.</p>}
-            <ApplyForm sports={sports} prices={prices} sportsError={sportsError} />
+            <ApplyForm sports={sports} sportsError={sportsError} />
           </div>
         </div>
       </section>
@@ -71,6 +57,7 @@ export default async function HomePage() {
           <p className="kicker">The process</p>
           <h2>Up and running in 48 hours</h2>
           <p className="sub">From application to the first sale. We handle the shop. You handle the season.</p>
+          <p>{TEAM_KEEP_ABOUT} {TEAM_PAYOUT_ROUND}</p>
           <div className="grid-3" style={{ marginTop: 28 }}>
             <article className="panel">
               <div className="step-no">01</div>

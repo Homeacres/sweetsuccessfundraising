@@ -5,7 +5,7 @@ import { ProductPhotoView } from "@/components/ProductPhoto";
 import type { ProductPhoto } from "@/components/product-photos";
 import { mixPackLines, normalizeCartLines } from "@/lib/cart";
 import { formatUserDate } from "@/lib/dates";
-import { formatCad } from "@/lib/money";
+import { formatCad, formatTeamCad } from "@/lib/money";
 import { cartCandyLine } from "@/lib/public-names";
 import {
   cartTotals,
@@ -167,7 +167,7 @@ export function Shop(props: {
       {props.goalCents > 0 && (
         <div style={{ margin: "16px 0 22px" }}>
           <div className="progress" aria-hidden="true"><span style={{ width: `${percent}%` }} /></div>
-          <p className="muted">Team has earned {formatCad(props.raisedCents)} of {formatCad(props.goalCents)}</p>
+          <p className="muted">Team has earned {formatTeamCad(props.raisedCents)} of {formatTeamCad(props.goalCents)}</p>
         </div>
       )}
       {props.status !== "active" && <div className="alert error">This fundraiser is not taking orders right now.</div>}
@@ -197,7 +197,7 @@ export function Shop(props: {
                     <div>
                       <strong>{bag.name}</strong>
                       <div className="muted">
-                        {unit != null ? `${formatCad(unit)} each` : "Price confirmed at checkout"} · team keeps {formatCad(bag.teamShareCents)}
+                        {unit != null ? `${formatCad(unit)} each` : "Price confirmed at checkout"}
                       </div>
                     </div>
                     <div className="stepper">
@@ -269,7 +269,6 @@ export function Shop(props: {
               </div>
             )}
             <p>{priced.lines.length > 0 ? `${totals.bags} bags · ${formatCad(totals.grossCents)}` : priced.error}</p>
-            {priced.lines.length > 0 && <p className="muted">Team keeps {formatCad(totals.teamShareCents)} from this order.</p>}
 
             <label htmlFor="buyer-name">Your name</label>
             <input id="buyer-name" value={buyerName} onChange={(event) => setBuyerName(event.target.value)} autoComplete="name" required />

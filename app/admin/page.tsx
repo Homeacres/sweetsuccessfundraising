@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/AdminNav";
 import { isAdminRequest } from "@/lib/admin-auth";
 import { formatUserDate } from "@/lib/dates";
-import { formatCad } from "@/lib/money";
+import { formatTeamCad } from "@/lib/money";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Campaigns", robots: { index: false, follow: false } };
@@ -37,7 +37,7 @@ export default async function AdminHome() {
                 </td>
                 <td>{campaign.status}</td>
                 <td>{formatUserDate(campaign.start_date) || "—"} → {formatUserDate(campaign.end_date) || "—"}</td>
-                <td>{formatCad(campaign.team_raised_cents)} / {formatCad(campaign.goal_cad)}</td>
+                <td>{formatTeamCad(campaign.team_raised_cents)} / {formatTeamCad(campaign.goal_cad)}</td>
               </tr>
             ))}
           </tbody>
