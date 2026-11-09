@@ -1,3 +1,4 @@
+import { activityLine } from "@/lib/email/activity-lines";
 import { SIGN_OFF_NAME, prospectReplyTo } from "@/lib/email/prospect";
 import { requestTurnaroundText } from "@/lib/launch";
 import { starSellerLine } from "@/lib/standings";
@@ -120,12 +121,15 @@ export function approvedEmail(input: {
   startWindow: string;
   dashboardUrl: string;
   unsubscribeUrl: string;
+  sport?: string;
   env?: Record<string, string | undefined>;
 }): FlowEmail {
   const end = ending(input.unsubscribeUrl);
   const dash = link(input.dashboardUrl, "Open your team dashboard");
+  const activity = activityLine(input.sport);
   const text = `Hi ${input.firstName},
 
+${activity}
 Thanks for choosing Sweet Success. ${input.teamName} is confirmed for ${input.startWindow}.
 Your dashboard is where you'll see sign-ups and sales as they come in.
 
@@ -135,6 +139,7 @@ Next, we'll email you a short invite that's ready to forward to your participant
 
 ${end.text}`;
   const html = `<p>Hi ${esc(input.firstName)},</p>
+<p>${esc(activity)}</p>
 <p>Thanks for choosing Sweet Success. ${esc(input.teamName)} is confirmed for ${esc(input.startWindow)}.</p>
 <p>Your dashboard is where you'll see sign-ups and sales as they come in.</p>
 ${dash.html}
@@ -159,7 +164,7 @@ ${input.teamName} is running a Sweet Success fundraiser from ${input.startWindow
 How it works:
 1. Sign up your participant below. It takes a minute.
 2. You'll get their own order link to share with family, friends and supporters.
-3. Supporters order online. Standard bags are $12 and premium bags are $14, GST included, and our group keeps $5 or $6 from every bag.
+3. Supporters order online. Bags start at $12 (GST included), and our group makes $5 or more on every bag.
 4. When the fundraiser ends, the whole order comes to our organizer, who hands it out.
 
 ${sign.text}
@@ -173,7 +178,7 @@ ${end.text}`;
 <ol>
 <li>Sign up your participant below. It takes a minute.</li>
 <li>You'll get their own order link to share with family, friends and supporters.</li>
-<li>Supporters order online. Standard bags are $12 and premium bags are $14, GST included, and our group keeps $5 or $6 from every bag.</li>
+<li>Supporters order online. Bags start at $12 (GST included), and our group makes $5 or more on every bag.</li>
 <li>When the fundraiser ends, the whole order comes to our organizer, who hands it out.</li>
 </ol>
 ${sign.html}
@@ -295,8 +300,8 @@ export function progressEmail(input: LiveLinks): FlowEmail {
   const first = over ? passedGoalFirstLine(input.teamName, input.goalPct) : `${input.teamName} is at ${input.goalPct}% of its goal. Thanks to everyone who's shared so far!`;
   const period = stars("Star sellers since our last update", input.periodStars);
   const links = audience(input);
-  const text = `Hi ${input.firstName},\n\n${first}\n${period.text}Every bag counts, whether it's the first one or the fiftieth.\nTips to keep it going:\n- Send a personal note with your link. It works better than a plain link.\n- Ask grandparents and neighbours. They love supporting local groups.\n- Mention premium bags: they're $14, and $6 goes to the group.\n\n${links.text}\n\n${end.text}`;
-  const html = `<p>Hi ${esc(input.firstName)},</p><p>${esc(first)}</p>${period.html}<p>Every bag counts, whether it's the first one or the fiftieth.</p><p>Tips to keep it going:</p><ul><li>Send a personal note with your link. It works better than a plain link.</li><li>Ask grandparents and neighbours. They love supporting local groups.</li><li>Mention premium bags: they're $14, and $6 goes to the group.</li></ul>${links.html}${end.html}`;
+  const text = `Hi ${input.firstName},\n\n${first}\n${period.text}Every bag counts, whether it's the first one or the fiftieth.\nTips to keep it going:\n- Send a personal note with your link. It works better than a plain link.\n- Ask grandparents and neighbours. They love supporting local groups.\n- Mention premium bags. Your group makes even more on those.\n\n${links.text}\n\n${end.text}`;
+  const html = `<p>Hi ${esc(input.firstName)},</p><p>${esc(first)}</p>${period.html}<p>Every bag counts, whether it's the first one or the fiftieth.</p><p>Tips to keep it going:</p><ul><li>Send a personal note with your link. It works better than a plain link.</li><li>Ask grandparents and neighbours. They love supporting local groups.</li><li>Mention premium bags. Your group makes even more on those.</li></ul>${links.html}${end.html}`;
   return { subject, preview: "Big thanks to everyone sharing, plus this week's star sellers.", text, html, headers: replyHeaders(input.env) };
 }
 

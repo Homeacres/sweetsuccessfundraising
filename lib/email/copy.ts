@@ -96,6 +96,7 @@ export function applicationApplicantEmail(input: {
   startUrl?: string;
   unsubscribeUrl?: string;
   replyTo?: string | null;
+  sport?: string;
 }): ApplyEmail {
   const mail = prospectQuoteEmail(
     prospectFields({
@@ -104,6 +105,7 @@ export function applicationApplicantEmail(input: {
       summary: input.summary,
       startUrl: input.startUrl || "https://example.com/o/start",
       unsubscribeUrl: input.unsubscribeUrl || "https://example.com/o/unsubscribe",
+      sport: input.sport,
     }),
     input.replyTo,
   );

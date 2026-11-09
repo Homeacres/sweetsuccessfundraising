@@ -46,7 +46,7 @@ export async function sendRequestReceived(organizerId: string): Promise<void> {
 export async function sendApprovedPack(organizerId: string, windowLabel: string): Promise<void> {
   const links = prospectActionUrls(organizerId);
   if (!links) return;
-  const { data } = await supabaseAdmin().from("organizers").select("first_name, email, organization_name, confirmed_goal_cents").eq("organizer_id", organizerId).maybeSingle();
+  const { data } = await supabaseAdmin().from("organizers").select("first_name, email, organization_name, sport, confirmed_goal_cents").eq("organizer_id", organizerId).maybeSingle();
   if (!data?.email) return;
   const goal = formatQuoteGoal((data.confirmed_goal_cents || 0) / 100);
   const team = data.organization_name || "your group";
@@ -56,6 +56,7 @@ export async function sendApprovedPack(organizerId: string, windowLabel: string)
     startWindow: windowLabel,
     dashboardUrl: links.dashboardUrl,
     unsubscribeUrl: links.unsubscribeUrl,
+    sport: data.sport,
   }));
   await sendFlowEmail(data.email, "prospect_parent_invite", parentInviteEmail({
     teamName: team,

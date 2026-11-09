@@ -54,6 +54,7 @@ export function planApplicantNotices(input: {
     startUrl: input.startUrl,
     unsubscribeUrl: input.unsubscribeUrl,
     replyTo: input.replyTo,
+    sport: input.sport,
   });
   const admin = applicationAdminEmail({
     firstName: input.firstName,

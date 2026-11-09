@@ -1,3 +1,4 @@
+import { activityLine } from "@/lib/email/activity-lines";
 import { appUrl } from "@/lib/env";
 import { organizerActionSecret, signOrganizerAction } from "@/lib/organizer-token";
 import { prospectFields, type ProspectFields } from "@/lib/quote-copy";
@@ -16,8 +17,7 @@ export function inboundReplyDomain(env: Record<string, string | undefined> = pro
   return (env.INBOUND_REPLY_DOMAIN || DEFAULT_INBOUND_REPLY_DOMAIN).trim().toLowerCase().replace(/^@/, "");
 }
 
-const STANDARD_LINE = "Standard bag: $12, your group keeps $5";
-const PREMIUM_LINE = "Premium bag: $14, your group keeps $6";
+const BAG_PRICE_LINE = "Bags start at $12 (GST included), and your group makes $5 or more on every bag sold. That's at least 40% of every sale.";
 
 export type ProspectStep = "quote" | "day2" | "day5" | "day10";
 
@@ -99,25 +99,24 @@ function wrap(preview: string, htmlBody: string, text: string): { html: string; 
 
 export function prospectQuoteEmail(fields: ProspectFields, replyTo?: string | null): ProspectEmail {
   const preview = `About ${fields.bags} bags to raise ${fields.goal}.`;
+  const activity = activityLine(fields.sport);
   const text = `Hi ${fields.firstName},
 
+${activity}
 Thanks for reaching out. Good luck to ${fields.teamName} this season.
 
 Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} per participant. Fewer if supporters pick premium.
 
-- ${STANDARD_LINE}
-- ${PREMIUM_LINE}
+${BAG_PRICE_LINE}
 
 Prices include GST. Single bags only for now.
 
 ${signOff(fields).text}`;
   const html = `<p>Hi ${escapeHtml(fields.firstName)},</p>
+<p>${escapeHtml(activity)}</p>
 <p>Thanks for reaching out. Good luck to ${escapeHtml(fields.teamName)} this season.</p>
 <p>Here's your estimate. To raise ${escapeHtml(fields.goal)}, your group would sell about ${escapeHtml(fields.bags)} bags, which is about ${escapeHtml(fields.bagsEach)} per participant. Fewer if supporters pick premium.</p>
-<ul>
-<li>${STANDARD_LINE}</li>
-<li>${PREMIUM_LINE}</li>
-</ul>
+<p>${escapeHtml(BAG_PRICE_LINE)}</p>
 <p>Prices include GST. Single bags only for now.</p>
 ${signOff(fields).html}`;
   const wrapped = wrap(preview, html, text);
@@ -136,7 +135,7 @@ export function prospectDay2Email(fields: ProspectFields, replyTo?: string | nul
 Here's how a fundraiser runs for ${fields.teamName}:
 
 1. We send you an order link to share with supporters.
-2. Supporters order online. Your group keeps $5 on every standard bag and $6 on every premium bag.
+2. Supporters order online, and your group makes $5 or more on every bag.
 3. ${BAG_ARRIVAL}
 
 Your estimate is still about ${fields.bags} bags (${fields.bagsEach} per participant) to raise ${fields.goal}.
@@ -146,7 +145,7 @@ ${signOff(fields).text}`;
 <p>Here's how a fundraiser runs for ${escapeHtml(fields.teamName)}:</p>
 <ol>
 <li>We send you an order link to share with supporters.</li>
-<li>Supporters order online. Your group keeps $5 on every standard bag and $6 on every premium bag.</li>
+<li>Supporters order online, and your group makes $5 or more on every bag.</li>
 <li>${escapeHtml(BAG_ARRIVAL)}</li>
 </ol>
 <p>Your estimate is still about ${escapeHtml(fields.bags)} bags (${escapeHtml(fields.bagsEach)} per participant) to raise ${escapeHtml(fields.goal)}.</p>

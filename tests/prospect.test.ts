@@ -16,6 +16,8 @@ import {
   prospectQuoteEmail,
   prospectReplyTo,
 } from "@/lib/email/prospect";
+import { activityLine } from "@/lib/email/activity-lines";
+import { approvedEmail, parentInviteEmail, progressEmail } from "@/lib/email/flow-copy";
 import { bagEstimate } from "@/lib/estimate";
 import { followUpsStopped } from "@/lib/prospect-run";
 import { signOrganizerAction, verifyOrganizerAction } from "@/lib/organizer-token";
@@ -40,8 +42,9 @@ describe("prospect copy", () => {
     expect(quote.preview).toBe("About 400 bags to raise $2,000.");
     expect(quote.text).toContain("Hi Pat,");
     expect(quote.text).toContain("about 400 bags, which is about 20 per participant");
-    expect(quote.text).toContain("Standard bag: $12, your group keeps $5");
-    expect(quote.text).toContain("Premium bag: $14, your group keeps $6");
+    expect(quote.text).toContain("Bags start at $12 (GST included), and your group makes $5 or more on every bag sold. That's at least 40% of every sale.");
+    expect(quote.text).toContain("We love working with local groups like yours.");
+    expect(quote.text).not.toContain("keeps $5");
     expect(quote.text).toContain("Prices include GST. Single bags only for now.");
     expect(quote.text).toContain("Start my fundraiser: https://preview.example/o/start/token");
     expect(quote.text).toContain(SIGN_OFF_NAME);
@@ -52,6 +55,7 @@ describe("prospect copy", () => {
     const day2 = prospectDay2Email(fields);
     expect(day2.subject).toBe("How it works for Hawks");
     expect(day2.text).toContain(BAG_ARRIVAL);
+    expect(day2.text).toContain("Supporters order online, and your group makes $5 or more on every bag.");
     expect(day2.text).toContain("20 per participant");
 
     expect(prospectDay5Email(fields).subject).toBe("Any questions before you start?");
@@ -70,6 +74,63 @@ describe("prospect copy", () => {
     expect(prospectReplyTo(organizerId, {})).toBeNull();
     const on = prospectReplyTo(organizerId, { INBOUND_EMAIL_ENABLED: "true" });
     expect(on).toBe("hello@team.sweetsuccessfundraising.com");
+  });
+});
+
+describe("activity lines", () => {
+  it("maps the listed activities and uses one fallback for everything else", () => {
+    expect(activityLine("Hockey")).toBe("We love working with hockey teams.");
+    expect(activityLine("dance")).toBe("We love working with dance groups.");
+    expect(activityLine("Music or band")).toBe("We love working with bands and music programs.");
+    expect(activityLine("School")).toBe("We love helping schools raise money for their students.");
+    expect(activityLine("Scouts or cadets")).toBe("We love working with Scouts and cadet groups.");
+    expect(activityLine("Church or charity")).toBe("We love supporting churches and charities.");
+    expect(activityLine("")).toBe("We love working with local groups like yours.");
+    expect(activityLine("Other")).toBe("We love working with local groups like yours.");
+    expect(activityLine("Other: Curling")).toBe("We love working with local groups like yours.");
+    expect(activityLine("Soccer")).toBe("We love working with local groups like yours.");
+    const hockey = prospectQuoteEmail({ ...fields, sport: "Hockey" });
+    const greeting = hockey.text.indexOf("Hi Pat,");
+    const line = hockey.text.indexOf("We love working with hockey teams.");
+    const luck = hockey.text.indexOf("Thanks for reaching out. Good luck to Hawks this season.");
+    expect(greeting).toBeLessThan(line);
+    expect(line).toBeLessThan(luck);
+    const approved = approvedEmail({
+      firstName: "Pat",
+      teamName: "Hawks",
+      startWindow: "Nov 15 to Dec 6",
+      dashboardUrl: "https://preview.example/o/dashboard/token",
+      unsubscribeUrl: "https://preview.example/o/unsubscribe/token",
+      sport: "Dance",
+    });
+    expect(approved.text.indexOf("Hi Pat,")).toBeLessThan(approved.text.indexOf("We love working with dance groups."));
+    expect(approved.text).toContain("Thanks for choosing Sweet Success.");
+    const invite = parentInviteEmail({
+      teamName: "Hawks",
+      startWindow: "Nov 15 to Dec 6",
+      goal: "$2,000",
+      signupUrl: "https://preview.example/p/join/token",
+      unsubscribeUrl: "https://preview.example/o/unsubscribe/token",
+    });
+    expect(invite.text).toContain("Supporters order online. Bags start at $12 (GST included), and our group makes $5 or more on every bag.");
+    const progress = progressEmail({
+      firstName: "Pat",
+      teamName: "Hawks",
+      goal: "$2,000",
+      goalPct: 40,
+      daysLeft: 6,
+      endDate: "Dec 6, 2026",
+      salesTotal: "$800.00",
+      periodStars: [],
+      overallStars: [],
+      dashboardUrl: null,
+      supporterLinks: [],
+      unsubscribeUrl: "https://preview.example/o/unsubscribe/token",
+    });
+    expect(progress.text).toContain("Mention premium bags. Your group makes even more on those.");
+    const sources = ["activity-lines.ts", "prospect.ts", "flow-copy.ts", "copy.ts"].map((name) => readFileSync(`lib/email/${name}`, "utf8")).join("\n");
+    expect(sources).not.toMatch(/keeps \$[56]/);
+    expect(sources).not.toContain("$6 goes to the group");
   });
 });
 
