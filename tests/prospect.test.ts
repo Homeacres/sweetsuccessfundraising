@@ -16,7 +16,7 @@ import {
   prospectQuoteEmail,
   prospectReplyTo,
 } from "@/lib/email/prospect";
-import { activityLine } from "@/lib/email/activity-lines";
+import { ACTIVITY_LINES, activityLine } from "@/lib/email/activity-lines";
 import { approvedEmail, parentInviteEmail, progressEmail } from "@/lib/email/flow-copy";
 import { bagEstimate } from "@/lib/estimate";
 import { followUpsStopped } from "@/lib/prospect-run";
@@ -88,7 +88,10 @@ describe("activity lines", () => {
     expect(activityLine("")).toBe("We love working with local groups like yours.");
     expect(activityLine("Other")).toBe("We love working with local groups like yours.");
     expect(activityLine("Other: Curling")).toBe("We love working with local groups like yours.");
-    expect(activityLine("Soccer")).toBe("We love working with local groups like yours.");
+    expect(activityLine("Curling")).toBe("We love working with local groups like yours.");
+    for (const [sport, line] of Object.entries(ACTIVITY_LINES)) {
+      expect(activityLine(sport)).toBe(line);
+    }
     const hockey = prospectQuoteEmail({ ...fields, sport: "Hockey" });
     const greeting = hockey.text.indexOf("Hi Pat,");
     const line = hockey.text.indexOf("We love working with hockey teams.");
