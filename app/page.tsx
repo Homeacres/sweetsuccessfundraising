@@ -36,12 +36,11 @@ export default async function HomePage() {
             <span className="eyebrow">Alberta teams, clubs and groups</span>
             <h1>Raise more.<br /><em>Stress less.</em></h1>
             <p className="lede">
-              Freeze-dried candy fundraisers for local groups. Buyers pay online, we make and deliver the order, and your organizer hands it out. No cash to collect.
+              Freeze-dried candy fundraisers for local groups. Supporters pay online, we make and deliver the order, and your organizer hands it out.
             </p>
             <div className="stats">
-              <div><strong>100%</strong><span>paid online</span></div>
-              <div><strong>$0</strong><span>upfront to the team</span></div>
-              <div><strong>$0</strong><span>cash to handle</span></div>
+              <div><strong className="stat-phrase">Pay online or by order sheet</strong></div>
+              <div><strong>$0</strong><span>upfront to your group</span></div>
             </div>
             <p>{TEAM_KEEP_ABOUT}</p>
           </div>
@@ -107,15 +106,25 @@ export default async function HomePage() {
       </section>
 
       <section className="section navy" id="about">
-        <div className="wrap grid-2">
-          <div>
-            <p className="kicker" style={{ color: "#e8c85a" }}>About us</p>
-            <h2>Built for local groups, by someone who gets it.</h2>
+        <div className="wrap">
+          <p className="kicker" style={{ color: "#e8c85a" }}>Why groups choose us</p>
+          <h2>Fundraising that's easy to run.</h2>
+          <div className="grid-3" style={{ marginTop: 28 }}>
+            <article className="panel">
+              <h3>Nothing to pay up front.</h3>
+              <p>No upfront cost and no minimum order. Start with what your group needs.</p>
+            </article>
+            <article className="panel">
+              <h3>Easy payments.</h3>
+              <p>Supporters pay online, and parents can log cash orders and pay the total by card. Your organizer has nothing to count.</p>
+            </article>
+            <article className="panel">
+              <h3>We handle the candy.</h3>
+              <p>We make your whole order and deliver it to your organizer, ready to hand out.</p>
+            </article>
           </div>
-          <div>
-            <p>Sweet Success exists so teams spend less time chasing cash. Production and delivery stay local. Every sale is paid online. Parents share a link, buyers pick a participant, and the organizer gets one delivery plus a pick list.</p>
-            <p>No inventory on your bench. No upfront cost. No minimum order to launch.</p>
-          </div>
+          <p style={{ marginTop: 28 }}>Your group makes $5 or more on every bag (at least 40% of every sale), and you can watch progress live.</p>
+          <p style={{ marginTop: 16 }}><a className="btn btn-gold" href="#apply">Calculate your fundraiser</a></p>
         </div>
       </section>
     </main>

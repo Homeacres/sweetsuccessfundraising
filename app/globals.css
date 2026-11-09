@@ -96,6 +96,7 @@ button, input, select, textarea { font-family: inherit; font-size: 16px; }
 .lede { color: rgba(255,255,255,0.72); font-size: 18px; max-width: 38rem; }
 .stats { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 22px; }
 .stats strong { display: block; font-family: var(--display); font-size: 32px; }
+.stats strong.stat-phrase { font-size: 22px; max-width: 12rem; line-height: 1.05; }
 .stats span { color: rgba(255,255,255,0.5); font-size: 13px; }
 
 .card {
