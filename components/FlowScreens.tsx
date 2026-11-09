@@ -30,8 +30,8 @@ export function StartRequestForm(props: {
     return (
       <main className="page wrap">
         <div className="card" style={{ maxWidth: 640 }}>
-          <h1>We've got your request</h1>
-          <p>{details.team} is in review. Follow-up emails have stopped.</p>
+          <h1>We'll confirm within 48 hours</h1>
+          <p>{details.team} is not on sale yet. We'll confirm within 48 hours. Nothing starts until then.</p>
         </div>
       </main>
     );

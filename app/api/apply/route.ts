@@ -19,6 +19,6 @@ export async function POST(request: Request) {
     return Response.json(result);
   } catch (error) {
     console.error("apply failed", error instanceof Error ? error.message : "error");
-    return Response.json({ ok: false, error: "We couldn't save that application. Please try again." }, { status: 500 });
+    return Response.json({ ok: false, error: "We couldn't save that. Please try again." }, { status: 500 });
   }
 }

@@ -18,7 +18,7 @@ describe("apply form before submit", () => {
     expect(form).not.toContain("estimateSentences");
     expect(source).not.toContain("calcEstimates");
     expect(source).toContain('if (done === "saved")');
-    expect(source).toContain("estimateSentences");
+    expect(source).toContain("Nothing has started yet.");
   });
 });
 
@@ -173,7 +173,16 @@ describe("apply email", () => {
 
   it("includes the estimate sentences and no source brand", () => {
     const message = applicationApplicantEmail({ firstName: "Pat", team: "Hawks", summary });
-    expect(applyThanksHeading("Pat")).toBe("Thanks, Pat! Here's your estimate.");
+    expect(applyThanksHeading("Pat")).toBe("Thanks, Pat! Here's your quote.");
+    const confirmation = readFileSync("components/ApplyForm.tsx", "utf8");
+    const quotePage = confirmation.slice(confirmation.indexOf("export function ApplyConfirmation"), confirmation.indexOf("export function ApplyForm"));
+    expect(quotePage).toContain("Nothing has started yet.");
+    expect(quotePage).toContain("Start my fundraiser");
+    expect(quotePage).toContain("We've emailed a copy of this quote to");
+    expect(quotePage).not.toMatch(/application|applied|your campaign|saved your application/i);
+    expect(readFileSync("lib/apply.ts", "utf8")).not.toContain("started_at");
+    expect(readFileSync("lib/apply.ts", "utf8")).not.toContain("review_status");
+    expect(readFileSync("lib/email/prospect.ts", "utf8").slice(0, readFileSync("lib/email/prospect.ts", "utf8").indexOf("export function prospectDay2Email"))).not.toMatch(/application|applied|your campaign/i);
     expect(readFileSync("components/ApplyForm.tsx", "utf8")).toContain("applyThanksHeading");
     expect(readFileSync("components/ApplyForm.tsx", "utf8")).toContain("Team, Association or Club name");
     expect(readFileSync("components/ApplyForm.tsx", "utf8")).toContain("Sport / Activity");

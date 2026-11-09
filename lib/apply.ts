@@ -28,11 +28,11 @@ export type ApplyInput = {
 };
 
 export type ApplyResult =
-  | { ok: true; already?: boolean; outOfArea?: boolean; emailed: boolean; summary: BagEstimate | null }
+  | { ok: true; already?: boolean; outOfArea?: boolean; emailed: boolean; summary: BagEstimate | null; startUrl: string | null }
   | { ok: false; error: string; status: number };
 
 export function parseApplyBody(body: unknown): ApplyInput | { error: string } {
-  if (!body || typeof body !== "object") return { error: "Missing application." };
+  if (!body || typeof body !== "object") return { error: "Missing details." };
   const raw = body as Record<string, unknown>;
   const participants = raw.participants === "" || raw.participants == null ? null : Number(raw.participants);
   const goalDollars = raw.goalDollars === "" || raw.goalDollars == null ? null : Number(raw.goalDollars);
@@ -55,7 +55,7 @@ export function parseApplyBody(body: unknown): ApplyInput | { error: string } {
 }
 
 export async function submitApplication(input: ApplyInput): Promise<ApplyResult> {
-  if (input.honeypot) return { ok: true, emailed: false, summary: null };
+  if (input.honeypot) return { ok: true, emailed: false, summary: null, startUrl: null };
 
   if (!input.firstName || !input.lastName) return { ok: false, error: "Enter your first and last name.", status: 400 };
   if (!isEmail(input.email)) return { ok: false, error: "Enter a valid email address.", status: 400 };
@@ -120,7 +120,7 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     const emailed = adminTo
       ? await sendApplyNotices([{ to: adminTo, emailType: "apply_out_of_area", message }])
       : false;
-    return { ok: true, outOfArea: true, emailed, summary: null };
+    return { ok: true, outOfArea: true, emailed, summary: null, startUrl: null };
   }
 
   const { data: existing, error: existingError } = await db
@@ -129,7 +129,7 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     .eq("email", input.email)
     .maybeSingle();
   if (existingError) throw existingError;
-  if (existing) return { ok: true, already: true, emailed: false, summary: null };
+  if (existing) return { ok: true, already: true, emailed: false, summary: null, startUrl: null };
 
   const { data: inserted, error: insertError } = await db.from("organizers").insert({
     first_name: input.firstName,
@@ -151,7 +151,7 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     notes: `Postal code: ${formatPostal(area.postal)}`,
   }).select("organizer_id").single();
   if (insertError) {
-    if (insertError.code === "23505") return { ok: true, already: true, emailed: false, summary: null };
+    if (insertError.code === "23505") return { ok: true, already: true, emailed: false, summary: null, startUrl: null };
     throw insertError;
   }
   const links = inserted?.organizer_id ? prospectActionUrls(inserted.organizer_id) : null;
@@ -176,7 +176,7 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     replyTo: inserted?.organizer_id ? prospectReplyTo(inserted.organizer_id) : null,
   });
   const emailed = await sendApplyNotices(notices);
-  return { ok: true, emailed, summary };
+  return { ok: true, emailed, summary, startUrl: links?.startUrl ?? null };
 }
 
 async function sendApplyNotices(notices: ApplyNotice[]): Promise<boolean> {

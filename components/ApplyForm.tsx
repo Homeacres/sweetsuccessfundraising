@@ -5,8 +5,8 @@ import { SportField } from "@/components/SportField";
 import { applyThanksHeading } from "@/lib/apply-heading";
 import { OTHER_SPORT, SPORT_LIST_ERROR, type SportChoice } from "@/lib/apply-sport";
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
-import { estimateSentences, type BagEstimate } from "@/lib/estimate";
-import { onPageQuote, prospectFields, TEAM_KEEP_ABOUT, TEAM_PAYOUT_ROUND } from "@/lib/quote-copy";
+import { type BagEstimate } from "@/lib/estimate";
+import { formatQuoteGoal, TEAM_KEEP_ABOUT, TEAM_PAYOUT_ROUND } from "@/lib/quote-copy";
 
 const HEARD = [
   "Coach or team manager",
@@ -23,24 +23,34 @@ type Done = "saved" | "already" | "away";
 
 export function ApplyConfirmation({
   firstName,
+  email,
   summary,
-  emailed,
+  startUrl,
 }: {
   firstName: string;
+  email: string;
   summary: BagEstimate | null;
-  emailed: boolean;
+  startUrl: string | null;
 }) {
-  const lines = summary ? estimateSentences(summary) : null;
-  const quote = summary
-    ? onPageQuote(prospectFields({ firstName, teamName: "", summary, startUrl: "", unsubscribeUrl: "" }))
-    : [];
+  const goal = summary ? formatQuoteGoal(summary.goalDollars) : "";
+  const bags = summary ? summary.totalBags.toLocaleString("en-CA") : "";
+  const each = summary && summary.participants > 0 ? summary.bagsEach.toLocaleString("en-CA") : null;
   return (
     <div className="card" id="apply">
       <h2>{applyThanksHeading(firstName)}</h2>
-      <p>We saved your application. We'll confirm your campaign within 48 hours.</p>
-      {quote.map((line) => <p key={line}>{line}</p>)}
-      {lines ? <p className="fine">{lines.intro}</p> : null}
-      {emailed ? <p>We emailed you a confirmation.</p> : null}
+      {summary ? (
+        <p>
+          To raise {goal}, your group would sell about {bags} bags.
+          {each ? ` That's about ${each} per participant.` : ""}
+        </p>
+      ) : null}
+      <p>Your group keeps at least 40% of every sale, and the payout is always a round dollar amount.</p>
+      <p>We've emailed a copy of this quote to {email}.</p>
+      <p className="fine">These are estimates. Nothing has started yet.</p>
+      <h3>Ready when you are</h3>
+      <p>When you're ready, click Start my fundraiser. You'll pick your start dates, number of participants and goal on the next page. There's no commitment until we confirm with you.</p>
+      {startUrl ? <a className="btn btn-navy" href={startUrl}>Start my fundraiser</a> : null}
+      <p className="fine">Not ready yet? Just reply to the quote email with any questions.</p>
     </div>
   );
 }
@@ -53,9 +63,10 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Done | null>(null);
-  const [emailed, setEmailed] = useState(false);
   const [summary, setSummary] = useState<BagEstimate | null>(null);
   const [thanksName, setThanksName] = useState("");
+  const [thanksEmail, setThanksEmail] = useState("");
+  const [startUrl, setStartUrl] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,6 +78,7 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
     }
     const form = new FormData(event.currentTarget);
     setThanksName(String(form.get("firstName") || ""));
+    setThanksEmail(String(form.get("email") || ""));
     setPending(true);
     try {
       const response = await fetch("/api/apply", {
@@ -96,13 +108,14 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
         outOfArea?: boolean;
         emailed?: boolean;
         summary?: BagEstimate | null;
+        startUrl?: string | null;
       };
       if (!response.ok || !data.ok) {
         setError(data.error || "We couldn't save that. Please try again.");
         return;
       }
-      setEmailed(Boolean(data.emailed));
       setSummary(data.summary ?? null);
+      setStartUrl(data.startUrl ?? null);
       setDone(data.outOfArea ? "away" : data.already ? "already" : "saved");
     } catch {
       setError("We couldn't save that. Please try again.");
@@ -112,17 +125,17 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
   }
 
   if (done === "saved") {
-    return <ApplyConfirmation firstName={thanksName} summary={summary} emailed={emailed} />;
+    return <ApplyConfirmation firstName={thanksName} email={thanksEmail} summary={summary} startUrl={startUrl} />;
   }
 
   if (done) {
     return (
       <div className="card" id="apply">
-        <h2>{done === "away" ? "We're not in that area yet" : "We already have your application"}</h2>
+        <h2>{done === "away" ? "We're not in that area yet" : "We already have this quote"}</h2>
         <p>
           {done === "away"
             ? "Sweet Success currently serves Alberta. We saved your note and will be in touch if that changes."
-            : "This email is already on an application. We'll use the details we have."}
+            : "This email already has a quote. Use Start my fundraiser in that email."}
         </p>
       </div>
     );
