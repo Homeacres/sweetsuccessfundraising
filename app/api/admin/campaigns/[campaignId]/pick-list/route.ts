@@ -18,7 +18,7 @@ export async function GET(_request: Request, context: { params: Promise<{ campai
 
   const rows = [...(data ?? [])].sort(comparePick);
   const csv = toCsv(
-    ["Player", "Buyer", "Email", "Phone", "Candy", "Brand", "Bag", "Bags", "Mix pack", "Ordered"],
+    ["Participant", "Buyer", "Email", "Phone", "Candy", "Brand", "Bag", "Bags", "Mix pack", "Ordered"],
     rows.map((row) => [
       `${row.player_first_name} ${row.player_last_name}`.trim(),
       row.buyer_name,

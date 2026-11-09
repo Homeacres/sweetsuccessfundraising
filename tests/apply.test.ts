@@ -177,6 +177,11 @@ describe("apply email", () => {
     const confirmation = readFileSync("components/ApplyForm.tsx", "utf8");
     const quotePage = confirmation.slice(confirmation.indexOf("export function ApplyConfirmation"), confirmation.indexOf("export function ApplyForm"));
     expect(quotePage).toContain("Nothing has started yet.");
+    expect(quotePage).toContain("That's about ${each} bags per participant.");
+    expect(quotePage).toContain("Your group makes $5 or more on every bag sold. That's at least 40% of every sale.");
+    expect(quotePage).toContain("mailto:hello@sweetsuccessfundraising.com");
+    expect(quotePage).toContain("Not ready yet? Questions? ");
+    expect(quotePage).not.toContain("reply to the quote email");
     expect(quotePage).toContain("Start my fundraiser");
     expect(quotePage).toContain("We've emailed a copy of this quote to");
     expect(quotePage).not.toMatch(/application|applied|your campaign|saved your application/i);

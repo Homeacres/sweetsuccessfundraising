@@ -33,7 +33,7 @@ export default async function HomePage() {
       <section className="hero">
         <div className="wrap hero-grid">
           <div>
-            <span className="eyebrow">Alberta youth sports</span>
+            <span className="eyebrow">Alberta teams, clubs and groups</span>
             <h1>Raise more.<br /><em>Stress less.</em></h1>
             <p className="lede">
               Freeze-dried candy for local teams. Buyers pay online, we make and deliver the order, and your organizer hands it out. No cash to collect.
@@ -56,7 +56,7 @@ export default async function HomePage() {
         <div className="wrap">
           <p className="kicker">The process</p>
           <h2>Up and running in 48 hours</h2>
-          <p className="sub">From application to the first sale. We handle the shop. You handle the season.</p>
+          <p className="sub">From the first quote to the first sale. We handle the shop. You hand out the order.</p>
           <p>{TEAM_KEEP_ABOUT} {TEAM_PAYOUT_ROUND}</p>
           <div className="grid-3" style={{ marginTop: 28 }}>
             <article className="panel">

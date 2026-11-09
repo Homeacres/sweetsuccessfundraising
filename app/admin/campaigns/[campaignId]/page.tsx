@@ -118,7 +118,7 @@ export default async function CampaignAdminPage({
 
       <section>
         <h2>Pick list</h2>
-        <p className="muted">By player, then buyer. Full names are for the organizer.</p>
+        <p className="muted">By participant, then buyer. Full names are for the organizer.</p>
         {[...grouped.entries()].map(([cpId, player]) => (
           <article className="player-block panel" key={cpId}>
             <h3>{player.name}</h3>

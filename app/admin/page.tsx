@@ -42,7 +42,7 @@ export default async function AdminHome() {
             ))}
           </tbody>
         </table>
-        {!(data ?? []).length && <p>No campaigns yet. Create one in Supabase, with a team slug and players, before the shop can sell.</p>}
+        {!(data ?? []).length && <p>No campaigns yet. Create one in Supabase, with a team slug and participants, before the shop can sell.</p>}
       </div>
     </main>
   );

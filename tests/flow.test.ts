@@ -86,6 +86,11 @@ describe("public sign-up token", () => {
     expect(doneAt).toBeGreaterThan(-1);
     expect(formAt).toBeGreaterThan(doneAt);
     expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("Confirm your fundraiser");
+    expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("We've got your {details.team} request!");
+    expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("confirm your start window {shortly}");
+    expect(readFileSync("components/FlowScreens.tsx", "utf8")).not.toContain("48 hours");
+    expect(readFileSync("components/FlowScreens.tsx", "utf8")).not.toContain("is not on sale yet");
+    expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("Not right now");
     expect(readFileSync("app/o/start/[token]/page.tsx", "utf8")).toContain("first_name");
     expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("Add another child");
     expect(join).toContain("done=1&add=1");

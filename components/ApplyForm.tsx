@@ -36,21 +36,21 @@ export function ApplyConfirmation({
   const bags = summary ? summary.totalBags.toLocaleString("en-CA") : "";
   const each = summary && summary.participants > 0 ? summary.bagsEach.toLocaleString("en-CA") : null;
   return (
-    <div className="card" id="apply">
+    <div className="card quote-card" id="apply">
       <h2>{applyThanksHeading(firstName)}</h2>
       {summary ? (
         <p>
           To raise {goal}, your group would sell about {bags} bags.
-          {each ? ` That's about ${each} per participant.` : ""}
+          {each ? ` That's about ${each} bags per participant.` : ""}
         </p>
       ) : null}
-      <p>Your group keeps at least 40% of every sale, and the payout is always a round dollar amount.</p>
+      <p>Your group makes $5 or more on every bag sold. That's at least 40% of every sale.</p>
       <p>We've emailed a copy of this quote to {email}.</p>
       <p className="fine">These are estimates. Nothing has started yet.</p>
       <h3>Ready when you are</h3>
       <p>When you're ready, click Start my fundraiser. You'll pick your start dates, number of participants and goal on the next page. There's no commitment until we confirm with you.</p>
       {startUrl ? <a className="btn btn-navy" href={startUrl}>Start my fundraiser</a> : null}
-      <p className="fine">Not ready yet? Just reply to the quote email with any questions.</p>
+      <p className="fine">Not ready yet? Questions? <a href="mailto:hello@sweetsuccessfundraising.com">Email hello@sweetsuccessfundraising.com</a></p>
     </div>
   );
 }
@@ -130,7 +130,7 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
 
   if (done) {
     return (
-      <div className="card" id="apply">
+      <div className="card quote-card" id="apply">
         <h2>{done === "away" ? "We're not in that area yet" : "We already have this quote"}</h2>
         <p>
           {done === "away"

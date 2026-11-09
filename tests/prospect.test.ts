@@ -95,7 +95,7 @@ describe("activity lines", () => {
     const hockey = prospectQuoteEmail({ ...fields, sport: "Hockey" });
     const greeting = hockey.text.indexOf("Hi Pat,");
     const line = hockey.text.indexOf("We love working with hockey teams.");
-    const luck = hockey.text.indexOf("Thanks for reaching out. Good luck to Hawks this season.");
+    const luck = hockey.text.indexOf("Thanks for reaching out. Good luck to Hawks.");
     expect(greeting).toBeLessThan(line);
     expect(line).toBeLessThan(luck);
     const approved = approvedEmail({

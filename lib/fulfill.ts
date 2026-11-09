@@ -98,7 +98,7 @@ export async function sendOrderReceipt(order: PaidOrder): Promise<void> {
       from_mix_pack?: boolean;
     };
     return {
-      player: (line.cp_id && names.get(line.cp_id)) || "Player",
+      player: (line.cp_id && names.get(line.cp_id)) || "Participant",
       candy: receiptCandyName(line.display_name),
       qty: line.qty ?? 0,
       grossCents: line.gross_cents ?? 0,

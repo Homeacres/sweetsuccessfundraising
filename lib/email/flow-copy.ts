@@ -104,13 +104,13 @@ ${input.startWindow} is already booked up, but we can fit ${input.teamName} in f
 
 ${take.text}
 
-None of these work? ${pick.text} lets you pick another slot, join the waitlist, or tell us 'not this season'.
+None of these work? ${pick.text} lets you pick another slot, join the waitlist, or tell us 'not right now'.
 
 ${end.text}`;
   const html = `<p>Hi ${esc(input.firstName)},</p>
 <p>${esc(input.startWindow)} is already booked up, but we can fit ${esc(input.teamName)} in for ${esc(input.altWindow)}.</p>
 ${take.html}
-<p>None of these work? <a href="${esc(input.pickUrl)}">pick another slot</a> lets you pick another slot, join the waitlist, or tell us 'not this season'.</p>
+<p>None of these work? <a href="${esc(input.pickUrl)}">pick another slot</a> lets you pick another slot, join the waitlist, or tell us 'not right now'.</p>
 ${end.html}`;
   return { subject: `A start window that works for ${input.teamName}`, preview, text, html, headers: replyHeaders(input.env) };
 }
@@ -244,12 +244,12 @@ export function parkedEmail(input: {
   const estimate = link(input.estimateUrl, "your estimate");
   const body = input.waitlist
     ? "You're on the waitlist. We'll email you if a window opens up."
-    : `Thanks for letting us know. We've paused ${input.teamName}'s request and won't send any more reminders.\nWhen the timing's better, your estimate is still here: ${estimate.text}. You can pick a new window anytime.\nGood luck to ${input.teamName} this season.`;
+    : `Thanks for letting us know. We've paused ${input.teamName}'s request and won't send any more reminders.\nWhen the timing's better, your estimate is still here: ${estimate.text}. You can pick a new window anytime.\nGood luck to ${input.teamName}.`;
   const htmlBody = input.waitlist
     ? `<p>You're on the waitlist. We'll email you if a window opens up.</p>`
     : `<p>Thanks for letting us know. We've paused ${esc(input.teamName)}'s request and won't send any more reminders.</p>
 <p>When the timing's better, your estimate is still here: <a href="${esc(input.estimateUrl)}">your estimate</a>. You can pick a new window anytime.</p>
-<p>Good luck to ${esc(input.teamName)} this season.</p>`;
+<p>Good luck to ${esc(input.teamName)}.</p>`;
   const text = `Hi ${input.firstName},\n\n${body}\n\n${end.text}`;
   const html = `<p>Hi ${esc(input.firstName)},</p>\n${htmlBody}\n${end.html}`;
   return {

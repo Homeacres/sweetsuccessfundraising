@@ -1,5 +1,5 @@
 import { CopyLink } from "@/components/CopyLink";
-import { LEADERBOARD_OPT_IN_LABEL } from "@/lib/launch";
+import { LEADERBOARD_OPT_IN_LABEL, requestTurnaroundText } from "@/lib/launch";
 import { starSellerLine } from "@/lib/standings";
 
 export type WindowChoice = { id: string; label: string };
@@ -27,11 +27,12 @@ export function StartRequestForm(props: {
 }) {
   const details = props.details;
   if (props.already) {
+    const shortly = requestTurnaroundText();
     return (
       <main className="page wrap">
         <div className="card" style={{ maxWidth: 640 }}>
-          <h1>We'll confirm within 48 hours</h1>
-          <p>{details.team} is not on sale yet. We'll confirm within 48 hours. Nothing starts until then.</p>
+          <h1>We've got your {details.team} request!</h1>
+          <p>We'll check our calendar and confirm your start window {shortly}. Nothing starts until we confirm with you, and nothing goes on sale before your start date. Watch your inbox for our email.</p>
         </div>
       </main>
     );
@@ -117,7 +118,7 @@ export function PickWindowForm(props: { team: string; windows: WindowChoice[]; t
         </form>
         <form method="post" action="/api/o/window">
           <input type="hidden" name="token" value={props.token} />
-          <button className="btn btn-ghost" type="submit" name="choice" value="not_this_season">Not this season</button>
+          <button className="btn btn-ghost" type="submit" name="choice" value="not_this_season">Not right now</button>
         </form>
       </div>
     </main>

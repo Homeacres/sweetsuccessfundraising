@@ -103,7 +103,7 @@ export function prospectQuoteEmail(fields: ProspectFields, replyTo?: string | nu
   const text = `Hi ${fields.firstName},
 
 ${activity}
-Thanks for reaching out. Good luck to ${fields.teamName} this season.
+Thanks for reaching out. Good luck to ${fields.teamName}.
 
 Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} per participant. Fewer if supporters pick premium.
 
@@ -114,7 +114,7 @@ Prices include GST. Single bags only for now.
 ${signOff(fields).text}`;
   const html = `<p>Hi ${escapeHtml(fields.firstName)},</p>
 <p>${escapeHtml(activity)}</p>
-<p>Thanks for reaching out. Good luck to ${escapeHtml(fields.teamName)} this season.</p>
+<p>Thanks for reaching out. Good luck to ${escapeHtml(fields.teamName)}.</p>
 <p>Here's your estimate. To raise ${escapeHtml(fields.goal)}, your group would sell about ${escapeHtml(fields.bags)} bags, which is about ${escapeHtml(fields.bagsEach)} per participant. Fewer if supporters pick premium.</p>
 <p>${escapeHtml(BAG_PRICE_LINE)}</p>
 <p>Prices include GST. Single bags only for now.</p>
