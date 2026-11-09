@@ -14,6 +14,7 @@ export type ProspectFields = {
   bagsEach: string;
   startUrl: string;
   unsubscribeUrl: string;
+  sport?: string;
 };
 
 export function formatQuoteGoal(dollars: number): string {
@@ -26,6 +27,7 @@ export function prospectFields(input: {
   summary: BagEstimate;
   startUrl: string;
   unsubscribeUrl: string;
+  sport?: string;
 }): ProspectFields {
   return {
     firstName: input.firstName,
@@ -35,6 +37,7 @@ export function prospectFields(input: {
     bagsEach: input.summary.bagsEach.toLocaleString("en-CA"),
     startUrl: input.startUrl,
     unsubscribeUrl: input.unsubscribeUrl,
+    sport: input.sport,
   };
 }
 
