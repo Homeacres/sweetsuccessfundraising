@@ -11,6 +11,7 @@ export type ApplicationRow = {
   appliedAt: string;
   email: string;
   city: string;
+  startedAt?: string | null;
 };
 
 export function AdminApplicationsTable({ rows }: { rows: ApplicationRow[] }) {
@@ -28,6 +29,7 @@ export function AdminApplicationsTable({ rows }: { rows: ApplicationRow[] }) {
             <th>Applied</th>
             <th>Email</th>
             <th>City</th>
+            <th>Follow-up</th>
             <th></th>
           </tr>
         </thead>
@@ -42,6 +44,7 @@ export function AdminApplicationsTable({ rows }: { rows: ApplicationRow[] }) {
               <td>{formatUserDate(row.appliedAt)}</td>
               <td>{row.email}</td>
               <td>{row.city}</td>
+              <td>{row.startedAt ? <span className="kicker">Started</span> : "—"}</td>
               <td>
                 <details className="approve">
                   <summary>Approve, create campaign</summary>
@@ -53,6 +56,9 @@ export function AdminApplicationsTable({ rows }: { rows: ApplicationRow[] }) {
                     <button className="btn btn-navy" type="submit">Create campaign</button>
                   </form>
                 </details>
+                <form action={`/api/admin/applications/${row.organizerId}/decline`} method="post" style={{ marginTop: 8 }}>
+                  <button className="btn btn-ghost" type="submit">Decline</button>
+                </form>
               </td>
             </tr>
           ))}

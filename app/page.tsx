@@ -80,7 +80,7 @@ export default async function HomePage() {
             <article className="panel">
               <div className="step-no">02</div>
               <h3>Share the team link</h3>
-              <p>Each player gets a link to text. Buyers can split one order across several players.</p>
+              <p>Each participant gets a link to text. Buyers can split one order across several participants.</p>
             </article>
             <article className="panel">
               <div className="step-no">03</div>
@@ -126,7 +126,7 @@ export default async function HomePage() {
             <h2>Built for local teams, by someone who gets it.</h2>
           </div>
           <div>
-            <p>Sweet Success exists so teams spend less time chasing cash. Production and delivery stay local. Every sale is paid online. Parents share a link, buyers pick a player, and the organizer gets one delivery plus a pick list.</p>
+            <p>Sweet Success exists so teams spend less time chasing cash. Production and delivery stay local. Every sale is paid online. Parents share a link, buyers pick a participant, and the organizer gets one delivery plus a pick list.</p>
             <p>No inventory on the team's bench. No upfront cost. No minimum order to launch.</p>
           </div>
         </div>

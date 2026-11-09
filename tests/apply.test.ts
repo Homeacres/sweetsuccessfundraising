@@ -146,17 +146,17 @@ describe("apply email", () => {
   it("includes the estimate sentences and no source brand", () => {
     const message = applicationApplicantEmail({ firstName: "Pat", team: "Hawks", summary });
     expect(applyThanksHeading("Pat")).toBe("Thanks, Pat! Here's your estimate.");
-    expect(message.html).toContain("Thanks, Pat! Here's your estimate.");
-    expect(message.text).toContain("Thanks, Pat! Here's your estimate.");
-    expect(message.subject).toBe("We received your Sweet Success application");
     expect(readFileSync("components/ApplyForm.tsx", "utf8")).toContain("applyThanksHeading");
+    expect(readFileSync("components/ApplyForm.tsx", "utf8")).toContain("Team, Association or Club name");
+    expect(readFileSync("components/ApplyForm.tsx", "utf8")).toContain("Sport / Activity");
     expect(readFileSync("components/ApplyForm.tsx", "utf8")).not.toContain("pipeline");
-    expect(readFileSync("lib/email/copy.ts", "utf8")).not.toContain("pipeline");
-    expect(message.text).toContain("These are estimates.");
+    expect(message.subject).toBe("Your Hawks fundraising estimate");
     expect(message.text).toContain("about 400 bags");
-    expect(message.text).toContain("About 20 bags each.");
-    expect(message.html).toContain("These are estimates.");
-    expect(message.html).toContain("About 20 bags each.");
+    expect(message.text).toContain("about 20 per participant");
+    expect(message.text).toContain("Start my fundraiser:");
+    expect(message.html).toContain("Start my fundraiser");
+    expect(message.html).toContain("Unsubscribe");
+    expect(message.headers).toBeUndefined();
     expect(message.text).not.toMatch(/skittles|jolly rancher|gummy/i);
   });
 
@@ -222,7 +222,7 @@ describe("apply email", () => {
       env: { APPLY_EMAILS_ENABLED: "true", RESEND_API_KEY: "re_test", ADMIN_EMAIL: "owner@example.com" },
       send: async (message) => {
         sent.push(message.to);
-        expect(message.text).toContain("These are estimates.");
+        expect(message.text).toContain("per participant");
         return "re_123";
       },
       log: async (row) => {

@@ -1,4 +1,5 @@
 import { checkServiceArea, formatPostal } from "@/lib/area";
+import { prospectActionUrls, prospectReplyTo } from "@/lib/email/prospect";
 import { deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
 import { parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable } from "@/lib/apply-sport";
 import { bagEstimate, type BagEstimate } from "@/lib/estimate";
@@ -129,7 +130,7 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
   if (existingError) throw existingError;
   if (existing) return { ok: true, already: true, emailed: false, summary: null };
 
-  const { error: insertError } = await db.from("organizers").insert({
+  const { data: inserted, error: insertError } = await db.from("organizers").insert({
     first_name: input.firstName,
     last_name: input.lastName,
     email: input.email,
@@ -147,11 +148,12 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     consent_at: input.consent ? new Date().toISOString() : null,
     record_source: "pilot_apply",
     notes: `Postal code: ${formatPostal(area.postal)}`,
-  });
+  }).select("organizer_id").single();
   if (insertError) {
     if (insertError.code === "23505") return { ok: true, already: true, emailed: false, summary: null };
     throw insertError;
   }
+  const links = inserted?.organizer_id ? prospectActionUrls(inserted.organizer_id) : null;
 
   const notices = planApplicantNotices({
     applicantEmail: input.email,
@@ -168,6 +170,9 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     consent: input.consent,
     summary,
     env: process.env,
+    startUrl: links?.startUrl,
+    unsubscribeUrl: links?.unsubscribeUrl,
+    replyTo: inserted?.organizer_id ? prospectReplyTo(inserted.organizer_id) : null,
   });
   const emailed = await sendApplyNotices(notices);
   return { ok: true, emailed, summary };

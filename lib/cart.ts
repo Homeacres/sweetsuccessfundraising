@@ -22,7 +22,7 @@ export function mixPackLines(
   packs = 1,
 ): IncomingLine[] {
   if (!cpId || !standardBagTypeId || productIds.length === 0) {
-    throw new CartPricingError("A mix pack needs a player and the active candies");
+    throw new CartPricingError("A mix pack needs a participant and the active candies");
   }
   if (!Number.isInteger(packs) || packs <= 0) {
     throw new CartPricingError("Mix pack quantity must be at least 1");
@@ -60,7 +60,7 @@ export function normalizeCartLines(lines: IncomingLine[]): PriceInput[] {
       qty <= 0 ||
       qty > MAX_LINE_QTY
     ) {
-      throw new CartPricingError("Each cart line needs a player, a candy, a bag type and a quantity");
+      throw new CartPricingError("Each cart line needs a participant, a candy, a bag type and a quantity");
     }
     const key = `${raw.cpId}|${raw.productId}|${raw.bagTypeId}`;
     const prev = merged.get(key);

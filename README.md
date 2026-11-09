@@ -65,7 +65,11 @@ The app reads environment variables on the server, when a request needs them. `n
 | `APPLY_EMAILS_ENABLED` | Apply emails send when this is `true`, `1`, or `yes` and `RESEND_API_KEY` is set. They also send when `EMAIL_TEST_RECIPIENT` is set. Otherwise nothing is sent. |
 | `EMAIL_TEST_RECIPIENT` | Optional. Every email goes only to this address, with `[TEST to <original>] ` on the subject. `email_log.status` is `redirected`. The logged recipient stays the original address so milestone dedupe still works. |
 | `ADMIN_PASSWORD` | Password for `/admin`. |
-| `CRON_SECRET` | Bearer token for `/api/cron/milestones`. Vercel Cron sends it as `Authorization: Bearer ...`. |
+| `CRON_SECRET` | Bearer token for `/api/cron/milestones` and `/api/cron/prospects`. Needed on Preview. |
+| `ORGANIZER_ACTION_SECRET` | HMAC secret for start, unsubscribe, and roster links. Needed on Preview before those emails are sent. |
+| `INBOUND_EMAIL_ENABLED` | Off unless `true`, `1`, or `yes`. Leave off on Preview until DNS for `team.sweetsuccessfundraising.com` is approved. |
+| `INBOUND_REPLY_DOMAIN` | Reply-To host when inbound email is on. Defaults to `team.sweetsuccessfundraising.com`. Not needed on Preview while inbound email is off. |
+| `RESEND_INBOUND_WEBHOOK_SECRET` | Verifies the Resend inbound webhook. Only needed when inbound email is on. |
 
 ## Stripe test-mode webhook
 

@@ -19,7 +19,7 @@ export type ResendBody = {
 };
 
 /** Where a successful send is recorded. Redirects keep the original address out of `to`. */
-export function sentLogStatus(env: NodeJS.ProcessEnv = process.env): "sent" | "redirected" {
+export function sentLogStatus(env: Record<string, string | undefined> = process.env): "sent" | "redirected" {
   return env.EMAIL_TEST_RECIPIENT?.trim() ? "redirected" : "sent";
 }
 
@@ -27,7 +27,7 @@ export function sentLogStatus(env: NodeJS.ProcessEnv = process.env): "sent" | "r
  * Envelope for Resend. When EMAIL_TEST_RECIPIENT is set, the message goes only
  * to that address. The original address is not copied to to, cc, or bcc.
  */
-export function resendBody(message: OutboundEmail, env: NodeJS.ProcessEnv = process.env): ResendBody {
+export function resendBody(message: OutboundEmail, env: Record<string, string | undefined> = process.env): ResendBody {
   const test = env.EMAIL_TEST_RECIPIENT?.trim();
   const to = test || message.to;
   const subject = test ? `[TEST to ${message.to}] ${message.subject}` : message.subject;

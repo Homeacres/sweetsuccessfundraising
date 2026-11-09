@@ -13,7 +13,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
   const params = await searchParams;
   const { data, error } = await supabaseAdmin()
     .from("organizers")
-    .select("organizer_id, first_name, last_name, email, organization_name, sport, city, participant_count_estimate, fundraising_goal_estimate_cad, status, created_at")
+    .select("organizer_id, first_name, last_name, email, organization_name, sport, city, participant_count_estimate, fundraising_goal_estimate_cad, status, created_at, started_at, replied_at, unsubscribed_at, declined_at")
     .eq("status", "applied")
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -28,6 +28,7 @@ export default async function ApplicationsPage({ searchParams }: { searchParams:
     appliedAt: row.created_at,
     email: row.email,
     city: row.city || "—",
+    startedAt: row.started_at,
   }));
   const message = (params.error || "").slice(0, 200);
 

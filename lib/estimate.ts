@@ -59,6 +59,6 @@ export function estimateSentences(summary: BagEstimate): { intro: string; total:
   return {
     intro: "These are estimates.",
     total: `To raise ${formatGoal(summary.goalDollars)} for the team, you would need about ${bags} ${bagWord(summary.totalBags)}.`,
-    each: `About ${each} ${bagWord(summary.bagsEach)} each.`,
+    each: `About ${each} ${bagWord(summary.bagsEach)} per participant.`,
   };
 }

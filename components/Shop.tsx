@@ -172,7 +172,7 @@ export function Shop(props: {
       )}
       {props.status !== "active" && <div className="alert error">This fundraiser is not taking orders right now.</div>}
 
-      <h2 style={{ fontSize: 28 }}>Who is this for?</h2>
+      <h2 style={{ fontSize: 28 }}>Which participant is this for?</h2>
       <div className="picker" ref={pickerRef}>
         {props.players.map((player) => (
           <button key={player.cpId} type="button" aria-pressed={player.cpId === playerId} onClick={() => setPlayerId(player.cpId)}>
@@ -180,7 +180,7 @@ export function Shop(props: {
           </button>
         ))}
       </div>
-      {props.players.length === 0 && <p>No players are listed for this team yet.</p>}
+      {props.players.length === 0 && <p>No participants are listed for this team yet.</p>}
 
       <div className="grid-2" style={{ marginTop: 18 }}>
         <div className="candy">
@@ -213,7 +213,7 @@ export function Shop(props: {
           {props.standardBagTypeId && props.products.length > 0 && (
             <article className="panel">
               <h3>Mix pack</h3>
-              <p className="muted">One of each candy for this player. {mixQuote ? `${mixQuote.bags} bags · ${formatCad(mixQuote.grossCents)}.` : ""}</p>
+              <p className="muted">One of each candy for this participant. {mixQuote ? `${mixQuote.bags} bags · ${formatCad(mixQuote.grossCents)}.` : ""}</p>
               <button className="btn btn-ghost" type="button" onClick={addMix} disabled={!canOrder || !playerId}>Add a mix pack</button>
             </article>
           )}
@@ -244,7 +244,7 @@ export function Shop(props: {
         <form onSubmit={checkout}>
           <div className="panel">
             <h2 style={{ fontSize: 28, marginTop: 0 }}>Cart</h2>
-            {lines.length === 0 && <p className="muted">Choose a player and add bags. The first tap starts at {props.defaultQty}.</p>}
+            {lines.length === 0 && <p className="muted">Choose a participant and add bags. The first tap starts at {props.defaultQty}.</p>}
             {lines.map((line) => {
               const player = props.players.find((item) => item.cpId === line.cpId);
               const product = props.products.find((item) => item.productId === line.productId);
@@ -261,10 +261,10 @@ export function Shop(props: {
             })}
             {playersInCart.size === 1 && props.players.length > 1 && lines.length > 0 && (
               <div className="estimate">
-                <strong style={{ fontSize: 18 }}>Add another player?</strong>
+                <strong style={{ fontSize: 18 }}>Add another participant?</strong>
                 <p className="muted">One payment can be split across the team. Pick someone else, then add their bags.</p>
                 <button className="btn btn-ghost" type="button" onClick={() => pickerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>
-                  Choose another player
+                  Choose another participant
                 </button>
               </div>
             )}

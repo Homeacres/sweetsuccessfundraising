@@ -1,5 +1,5 @@
-import { applyThanksHeading } from "@/lib/apply-heading";
 import { formatUserDate } from "@/lib/dates";
+import { prospectFields, prospectQuoteEmail } from "@/lib/email/prospect";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";
 import { appUrl } from "@/lib/env";
 import { formatCad } from "@/lib/money";
@@ -29,7 +29,7 @@ export function shell(title: string, innerHtml: string, innerText: string): { ht
   return { html, text: `${title}\n\n${innerText}\n\nSweet Success Fundraising` };
 }
 
-export type ApplyEmail = { subject: string; html: string; text: string };
+export type ApplyEmail = { subject: string; html: string; text: string; headers?: Record<string, string> };
 
 export function applicationAdminEmail(input: {
   firstName: string;
@@ -80,17 +80,21 @@ export function applicationApplicantEmail(input: {
   firstName: string;
   team: string;
   summary: BagEstimate;
+  startUrl?: string;
+  unsubscribeUrl?: string;
+  replyTo?: string | null;
 }): ApplyEmail {
-  const lines = estimateSentences(input.summary);
-  const text = `Hi ${input.firstName}, we have your application for ${input.team}. We'll confirm your campaign within 48 hours.\n\n${lines.intro}\n${lines.total}\n${lines.each}\n\nQuestions: hello@sweetsuccessfundraising.com`;
-  const html = `<p>Hi ${escapeHtml(input.firstName)},</p>
-<p>We have your application for <strong>${escapeHtml(input.team)}</strong>. We'll confirm your campaign within 48 hours.</p>
-<p>${escapeHtml(lines.intro)}</p>
-<p>${escapeHtml(lines.total)}</p>
-<p>${escapeHtml(lines.each)}</p>
-<p>Questions? Email <a href="mailto:hello@sweetsuccessfundraising.com">hello@sweetsuccessfundraising.com</a>.</p>`;
-  const wrapped = shell(applyThanksHeading(input.firstName), html, text);
-  return { subject: "We received your Sweet Success application", ...wrapped };
+  const mail = prospectQuoteEmail(
+    prospectFields({
+      firstName: input.firstName,
+      teamName: input.team,
+      summary: input.summary,
+      startUrl: input.startUrl || "https://example.com/o/start",
+      unsubscribeUrl: input.unsubscribeUrl || "https://example.com/o/unsubscribe",
+    }),
+    input.replyTo,
+  );
+  return { subject: mail.subject, html: mail.html, text: mail.text, headers: mail.headers };
 }
 
 export function outOfAreaAdminEmail(input: {
@@ -125,7 +129,7 @@ export function receiptEmail(input: {
   const lineText = input.lines
     .map((line) => `${line.player} — ${line.candy} × ${line.qty}${line.mix ? " (mix pack)" : ""} — ${formatCad(line.grossCents)}`)
     .join("\n");
-  const text = `Hi ${input.buyerName}, thanks for supporting ${input.team}.\n\n${lineText}\n\nTotal: ${formatCad(input.totalCents)} for ${input.bags} bag${input.bags === 1 ? "" : "s"}.\n\nThere is no shipping address. The order is delivered in bulk to the team organizer, who hands it out at practice or a game.`;
+  const text = `Hi ${input.buyerName}, thanks for supporting ${input.team}.\n\n${lineText}\n\nTotal: ${formatCad(input.totalCents)} for ${input.bags} bag${input.bags === 1 ? "" : "s"}.\n\nThere is no shipping address. Your order will be handed out by your team organizer.`;
   const html = `<p>Hi ${escapeHtml(input.buyerName)}, thanks for supporting <strong>${escapeHtml(input.team)}</strong>.</p>
 <ul>${input.lines
     .map(
@@ -134,7 +138,7 @@ export function receiptEmail(input: {
     )
     .join("")}</ul>
 <p><strong>Total ${formatCad(input.totalCents)}</strong> · ${input.bags} bag${input.bags === 1 ? "" : "s"}</p>
-<p>There is no shipping address on this order. It is delivered in bulk to the team organizer, who hands bags out at practice or a game.</p>`;
+<p>There is no shipping address on this order. Your order will be handed out by your team organizer.</p>`;
   const wrapped = shell("Your receipt", html, text);
   return { subject: `Receipt: ${input.team} fundraiser`, ...wrapped };
 }

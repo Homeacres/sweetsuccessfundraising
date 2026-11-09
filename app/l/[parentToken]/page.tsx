@@ -29,7 +29,7 @@ export default async function LeaderboardPage({ params }: { params: Promise<{ pa
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Rank</th><th>Player</th><th>Bags</th><th>For the team</th></tr>
+            <tr><th>Rank</th><th>Participant</th><th>Bags</th><th>For the team</th></tr>
           </thead>
           <tbody>
             {data.map((row: { campaign_rank: number | null; display_name: string; bags_sold: number; team_revenue_cents: number; is_your_player: boolean }, index: number) => (

@@ -6,6 +6,7 @@ import { applyThanksHeading } from "@/lib/apply-heading";
 import { OTHER_SPORT, SPORT_LIST_ERROR, type SportChoice } from "@/lib/apply-sport";
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";
+import { onPageQuote, prospectFields } from "@/lib/quote-copy";
 import { formatCad } from "@/lib/money";
 
 const HEARD = [
@@ -32,17 +33,15 @@ export function ApplyConfirmation({
   emailed: boolean;
 }) {
   const lines = summary ? estimateSentences(summary) : null;
+  const quote = summary
+    ? onPageQuote(prospectFields({ firstName, teamName: "", summary, startUrl: "", unsubscribeUrl: "" }))
+    : [];
   return (
     <div className="card" id="apply">
       <h2>{applyThanksHeading(firstName)}</h2>
       <p>We saved your application. We'll confirm your campaign within 48 hours.</p>
-      {lines ? (
-        <>
-          <p>{lines.intro}</p>
-          <p>{lines.total}</p>
-          <p>{lines.each}</p>
-        </>
-      ) : null}
+      {quote.map((line) => <p key={line}>{line}</p>)}
+      {lines ? <p className="fine">{lines.intro}</p> : null}
       {emailed ? <p>We emailed you a confirmation.</p> : null}
     </div>
   );
@@ -159,9 +158,9 @@ export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice
       <input id="email" name="email" type="email" autoComplete="email" required />
       <label htmlFor="phone">Phone <span className="fine">(optional)</span></label>
       <input id="phone" name="phone" type="tel" autoComplete="tel" />
-      <label htmlFor="team">Club or team</label>
+      <label htmlFor="team">Team, Association or Club name</label>
       <input id="team" name="team" required />
-      <label id="sport-label" htmlFor="sport">Sport or activity</label>
+      <label id="sport-label" htmlFor="sport">Sport / Activity</label>
       {sportsError ? (
         <p id="sport" className="alert error" role="alert">{SPORT_LIST_ERROR}</p>
       ) : (
@@ -169,7 +168,7 @@ export function ApplyForm({ sports, prices, sportsError }: { sports: SportChoice
       )}
       {sport === OTHER_SPORT ? (
         <>
-          <label htmlFor="sportOther">Which sport or activity?</label>
+          <label htmlFor="sportOther">Which sport / activity?</label>
           <input
             id="sportOther"
             name="sportOther"

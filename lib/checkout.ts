@@ -60,7 +60,7 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
     .in("cp_id", cpIds);
   if (rosterError) throw rosterError;
   if (!roster || roster.length !== cpIds.length) {
-    return { ok: false, error: "One of those players is not on this team.", status: 400 };
+    return { ok: false, error: "One of those participants is not on this team.", status: 400 };
   }
 
   const productIds = [...new Set(normalized.map((line) => line.productId))];
@@ -102,7 +102,7 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
   const anchorId =
     entryCpId && rows.some((row) => row.cp_id === entryCpId) ? entryCpId : [...rows].sort((a, b) => a.line_no - b.line_no)[0].cp_id;
   const familyId = roster.find((player) => player.cp_id === anchorId)?.family_id;
-  if (!familyId) return { ok: false, error: "One of those players is not on this team.", status: 400 };
+  if (!familyId) return { ok: false, error: "One of those participants is not on this team.", status: 400 };
 
   const nameByProduct = new Map<string, string>();
   const { data: campaignRow } = await db.from("campaigns").select("sport").eq("campaign_id", campaign.campaign_id).maybeSingle();
@@ -166,7 +166,7 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
   );
   if (lineError) {
     await db.from("orders").delete().eq("order_id", orderId);
-    return { ok: false, error: "Could not save this order. Check the players and try again.", status: 400 };
+    return { ok: false, error: "Could not save this order. Check the participants and try again.", status: 400 };
   }
 
   const origin = appUrl();

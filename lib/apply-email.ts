@@ -4,7 +4,7 @@ import { sentLogStatus } from "@/lib/email/send";
 
 export const APPLY_ADMIN_FALLBACK = "obrien71@gmail.com";
 
-export type ApplyEmailEnv = NodeJS.ProcessEnv;
+export type ApplyEmailEnv = Record<string, string | undefined>;
 
 /**
  * Sends when a Resend key is set and either APPLY_EMAILS_ENABLED is on
@@ -43,11 +43,17 @@ export function planApplicantNotices(input: {
   consent: boolean;
   summary: BagEstimate;
   env: ApplyEmailEnv;
+  startUrl?: string;
+  unsubscribeUrl?: string;
+  replyTo?: string | null;
 }): ApplyNotice[] {
   const summaryText = applicationApplicantEmail({
     firstName: input.firstName,
     team: input.team,
     summary: input.summary,
+    startUrl: input.startUrl,
+    unsubscribeUrl: input.unsubscribeUrl,
+    replyTo: input.replyTo,
   });
   const admin = applicationAdminEmail({
     firstName: input.firstName,
