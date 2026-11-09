@@ -6,7 +6,7 @@ The Next.js app in this repository is the pilot shop. It is meant to be deployed
 
 ## What the pilot does
 
-- Organizers apply at `/`. The form is saved to `organizers` (or `out_of_area_log` when the postal code is outside `platform_config.service_provinces`). A Resend note goes to `ADMIN_EMAIL`. The CASL checkbox starts unchecked.
+- Organizers apply at `/`. The form is saved to `organizers` (or `out_of_area_log` when the postal code is outside `platform_config.service_provinces`). A Resend note goes to `ADMIN_EMAIL` only when that variable is set. The CASL checkbox starts unchecked.
 - Buyers order at `/t/{team_slug}` or `/t/{team_slug}/{player_slug}`. One order can be split across players. A mix pack is one bag of each active candy.
 - Prices come from `fn_price_cart` on the server. The browser only previews.
 - Stripe Checkout (test mode, CAD) charges the priced total. There is no shipping address.
@@ -61,7 +61,7 @@ The app reads environment variables on the server, when a request needs them. `n
 | `STRIPE_WEBHOOK_SECRET` | Signing secret (`whsec_...`) from the Stripe CLI or the Vercel webhook endpoint. |
 | `RESEND_API_KEY` | Resend API key. |
 | `RESEND_FROM` | From address on a domain verified in Resend. Example: `Sweet Success Fundraising <hello@sweetsuccessfundraising.com>` |
-| `ADMIN_EMAIL` | Copy of an organizer application. If unset, the copy goes to obrien71@gmail.com. |
+| `ADMIN_EMAIL` | Admin notices only. If unset, no admin copy is sent. Preview should use the Resend test address. Never a personal Gmail. |
 | `APPLY_EMAILS_ENABLED` | Apply emails send when this is `true`, `1`, or `yes` and `RESEND_API_KEY` is set. They also send when `EMAIL_TEST_RECIPIENT` is set. Otherwise nothing is sent. |
 | `EMAIL_TEST_RECIPIENT` | Optional. Every email goes only to this address, with `[TEST to <original>] ` on the subject. `email_log.status` is `redirected`. The logged recipient stays the original address so milestone dedupe still works. |
 | `ADMIN_PASSWORD` | Password for `/admin`. |

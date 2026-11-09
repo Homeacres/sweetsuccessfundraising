@@ -1,6 +1,6 @@
 import { checkServiceArea, formatPostal } from "@/lib/area";
 import { prospectActionUrls, prospectReplyTo } from "@/lib/email/prospect";
-import { deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
+import { applyAdminRecipient, deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
 import { parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable } from "@/lib/apply-sport";
 import { bagEstimate, type BagEstimate } from "@/lib/estimate";
 import { dollarsToCents } from "@/lib/money";
@@ -116,9 +116,10 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
       province: area.province,
       sport: resolvedSport.sport,
     });
-    const emailed = await sendApplyNotices([
-      { to: applyAdminTo(), emailType: "apply_out_of_area", message },
-    ]);
+    const adminTo = applyAdminRecipient(process.env);
+    const emailed = adminTo
+      ? await sendApplyNotices([{ to: adminTo, emailType: "apply_out_of_area", message }])
+      : false;
     return { ok: true, outOfArea: true, emailed, summary: null };
   }
 
@@ -176,10 +177,6 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
   });
   const emailed = await sendApplyNotices(notices);
   return { ok: true, emailed, summary };
-}
-
-function applyAdminTo(): string {
-  return process.env.ADMIN_EMAIL?.trim() || "obrien71@gmail.com";
 }
 
 async function sendApplyNotices(notices: ApplyNotice[]): Promise<boolean> {

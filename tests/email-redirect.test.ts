@@ -7,7 +7,7 @@ import {
   outOfAreaAdminEmail,
   receiptEmail,
 } from "@/lib/email/copy";
-import { resendBody, type OutboundEmail } from "@/lib/email/send";
+import { assertNoPersonalGmail, resendBody, type OutboundEmail } from "@/lib/email/send";
 import { bagEstimate } from "@/lib/estimate";
 import type { MilestoneName } from "@/lib/milestones";
 
@@ -110,6 +110,27 @@ describe("EMAIL_TEST_RECIPIENT", () => {
       expect(body.to.join(" "), item.type).not.toContain(item.mail.to);
       expect(JSON.stringify({ to: body.to, cc: (body as { cc?: unknown }).cc, bcc: (body as { bcc?: unknown }).bcc }), item.type).not.toContain(item.mail.to);
     }
+  });
+
+  it("refuses a personal Gmail for the test inbox, Reply-To, cc, or bcc", () => {
+    expect(() => resendBody(
+      { to: "pat@example.com", subject: "Hi", html: "", text: "" },
+      { EMAIL_TEST_RECIPIENT: "someone@gmail.com" },
+    )).toThrow(/personal Gmail/);
+    expect(() => assertNoPersonalGmail({
+      to: "pat@example.com",
+      subject: "Hi",
+      html: "",
+      text: "",
+      headers: { "Reply-To": "someone@gmail.com" },
+    })).toThrow(/Reply-To/);
+    expect(() => assertNoPersonalGmail({
+      to: "pat@example.com",
+      subject: "Hi",
+      html: "",
+      text: "",
+      bcc: ["someone@googlemail.com"],
+    })).toThrow(/cc\/bcc/);
   });
 
   it("leaves the envelope alone and skips the send when neither switch is set", async () => {

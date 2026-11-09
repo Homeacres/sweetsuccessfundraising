@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { applyThanksHeading } from "@/lib/apply-heading";
-import { deliverApplyNotices, planApplicantNotices, applyEmailsWillSend, APPLY_ADMIN_FALLBACK } from "@/lib/apply-email";
+import { deliverApplyNotices, planApplicantNotices, applyEmailsWillSend, applyAdminRecipient } from "@/lib/apply-email";
 import { applySportOptions, parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable, type SportCatalogRow } from "@/lib/apply-sport";
 import { bagEstimate, bagEstimateFromStoredCents, bagsEach, totalBagsForGoalCents, totalBagsForGoalDollars } from "@/lib/estimate";
 import { applicationApplicantEmail } from "@/lib/email/copy";
@@ -177,7 +177,10 @@ describe("apply email", () => {
       summary,
       env: {},
     });
-    expect(notices.map((notice) => notice.to)).toEqual(["pat@example.com", APPLY_ADMIN_FALLBACK]);
+    expect(notices.map((notice) => notice.to)).toEqual(["pat@example.com"]);
+    expect(applyAdminRecipient({})).toBeNull();
+    expect(applyAdminRecipient({ ADMIN_EMAIL: "pat@gmail.com" })).toBeNull();
+    expect(applyAdminRecipient({ ADMIN_EMAIL: "inbox@team.sweetsuccessfundraising.com" })).toBe("inbox@team.sweetsuccessfundraising.com");
     expect(applyEmailsWillSend({})).toBe(false);
     expect(applyEmailsWillSend({ APPLY_EMAILS_ENABLED: "true" })).toBe(false);
     expect(applyEmailsWillSend({ APPLY_EMAILS_ENABLED: "yes", RESEND_API_KEY: "re_test" })).toBe(true);
@@ -197,7 +200,7 @@ describe("apply email", () => {
       },
     });
     expect(result.sent).toBe(false);
-    expect(logged).toEqual([`skipped:pat@example.com`, `skipped:${APPLY_ADMIN_FALLBACK}`]);
+    expect(logged).toEqual(["skipped:pat@example.com"]);
 
     const missingKey = await deliverApplyNotices({
       notices: [notices[0]],

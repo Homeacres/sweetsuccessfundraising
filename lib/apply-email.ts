@@ -1,8 +1,6 @@
 import type { BagEstimate } from "@/lib/estimate";
 import { applicationApplicantEmail, applicationAdminEmail, type ApplyEmail } from "@/lib/email/copy";
-import { sentLogStatus } from "@/lib/email/send";
-
-export const APPLY_ADMIN_FALLBACK = "obrien71@gmail.com";
+import { isPersonalGmail, sentLogStatus } from "@/lib/email/send";
 
 export type ApplyEmailEnv = Record<string, string | undefined>;
 
@@ -17,9 +15,11 @@ export function applyEmailsWillSend(env: ApplyEmailEnv): boolean {
   return Boolean(env.RESEND_API_KEY?.trim()) && (enabled || test);
 }
 
-export function applyAdminRecipient(env: ApplyEmailEnv): string {
-  const configured = env.ADMIN_EMAIL?.trim();
-  return configured || APPLY_ADMIN_FALLBACK;
+/** Admin notices go only to ADMIN_EMAIL. No address is assumed when it is unset. */
+export function applyAdminRecipient(env: ApplyEmailEnv): string | null {
+  const configured = env.ADMIN_EMAIL?.trim() || "";
+  if (!configured || isPersonalGmail(configured)) return null;
+  return configured;
 }
 
 export type ApplyNotice = {
@@ -74,7 +74,7 @@ export function planApplicantNotices(input: {
   const notices: ApplyNotice[] = [
     { to: input.applicantEmail, emailType: "apply_confirmation", message: summaryText },
   ];
-  if (adminTo.toLowerCase() !== input.applicantEmail.toLowerCase()) {
+  if (adminTo && adminTo.toLowerCase() !== input.applicantEmail.toLowerCase()) {
     notices.push({ to: adminTo, emailType: "apply_confirmation_copy", message: admin });
   }
   return notices;
