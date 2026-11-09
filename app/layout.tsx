@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: { default: "Sweet Success Fundraising", template: "%s · Sweet Success" },
-  description: "Freeze-dried candy fundraisers for teams, clubs and groups in Alberta. Buyers pay online. The team keeps a share of every bag.",
+  description: "Freeze-dried candy fundraisers for local groups. Supporters pay online, and your group makes $5 or more on every bag.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
