@@ -2,9 +2,7 @@ import type { BagEstimate } from "@/lib/estimate";
 import { formatTeamCad } from "@/lib/money";
 
 // COPY: pending CORA review
-export const TEAM_KEEP_ABOUT = "Teams keep at least 40% of sales.";
-// COPY: pending CORA review
-export const TEAM_PAYOUT_ROUND = "The payout is always a round dollar amount.";
+export const TEAM_KEEP_ABOUT = "Groups keep at least 40% of every sale.";
 
 export type ProspectFields = {
   firstName: string;
@@ -43,8 +41,7 @@ export function prospectFields(input: {
 
 export function onPageQuote(fields: Pick<ProspectFields, "goal" | "bags" | "bagsEach">): string[] {
   return [
-    `Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} per participant. Fewer if supporters pick premium.`,
+    `Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} bags per participant. Fewer if supporters pick premium.`,
     TEAM_KEEP_ABOUT,
-    TEAM_PAYOUT_ROUND,
   ];
 }

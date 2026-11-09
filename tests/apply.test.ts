@@ -6,7 +6,8 @@ import { applySportOptions, parseParticipantCount, resolveOrganizerSport, SPORT_
 import { bagEstimate, bagEstimateFromStoredCents, bagsEach, totalBagsForGoalCents, totalBagsForGoalDollars } from "@/lib/estimate";
 import { applicationApplicantEmail } from "@/lib/email/copy";
 import { dollarsToCents, formatTeamCad } from "@/lib/money";
-import { formatQuoteGoal, onPageQuote, TEAM_KEEP_ABOUT, TEAM_PAYOUT_ROUND } from "@/lib/quote-copy";
+import { QUOTE_REUSE_MS, sameRecentQuote } from "@/lib/apply";
+import { formatQuoteGoal, onPageQuote, TEAM_KEEP_ABOUT } from "@/lib/quote-copy";
 
 const active = ["Hockey", "Soccer", "Other"];
 
@@ -123,24 +124,42 @@ describe("organizer share copy", () => {
     const form = readFileSync("components/ApplyForm.tsx", "utf8");
     const shop = readFileSync("components/Shop.tsx", "utf8");
     const quote = onPageQuote({ goal: "$2,000", bags: "400", bagsEach: "20" }).join("\n");
-    expect(TEAM_KEEP_ABOUT).toBe("Teams keep at least 40% of sales.");
+    expect(TEAM_KEEP_ABOUT).toBe("Groups keep at least 40% of every sale.");
     expect(form).toContain("Calculate your fundraiser");
     expect(form).toContain("See my estimate");
     expect(form).not.toContain("Apply to run");
     expect(readFileSync("components/Header.tsx", "utf8")).toContain("Get started");
     expect(readFileSync("components/Header.tsx", "utf8")).not.toContain(">Apply<");
     expect(page).toContain("TEAM_KEEP_ABOUT");
-    expect(page).toContain("TEAM_PAYOUT_ROUND");
+    expect(page).not.toContain("round dollar");
     expect(form).toContain("TEAM_KEEP_ABOUT");
+    expect(form).not.toContain("round dollar");
     expect(form).not.toContain("teamShareCents");
     expect(shop).not.toContain("team keeps");
     expect(quote).toContain(TEAM_KEEP_ABOUT);
-    expect(quote).toContain(TEAM_PAYOUT_ROUND);
+    expect(quote).not.toContain("round dollar");
     expect(quote).not.toContain("keeps $5");
     expect(formatQuoteGoal(2000.4)).toBe(formatTeamCad(200000));
     expect(formatQuoteGoal(2000.6)).toBe(formatTeamCad(200100));
     expect(formatTeamCad(149)).toBe(formatTeamCad(100));
     expect(formatTeamCad(550)).not.toMatch(/\.\d/);
+  });
+});
+
+describe("quote retry", () => {
+  it("reuses the same estimate inside the window and not after it", () => {
+    const now = Date.now();
+    const row = {
+      created_at: new Date(now - 1000).toISOString(),
+      organization_name: "Hawks",
+      sport: "Hockey",
+      participant_count_estimate: 18,
+      fundraising_goal_estimate_cad: dollarsToCents(2000),
+    };
+    const input = { team: "Hawks", participants: 18, goalDollars: 2000 };
+    expect(sameRecentQuote(row, input, "Hockey", now)).toBe(true);
+    expect(sameRecentQuote(row, { ...input, goalDollars: 3000 }, "Hockey", now)).toBe(false);
+    expect(sameRecentQuote({ ...row, created_at: new Date(now - QUOTE_REUSE_MS - 1000).toISOString() }, input, "Hockey", now)).toBe(false);
   });
 });
 
@@ -182,6 +201,7 @@ describe("apply email", () => {
     expect(quotePage).toContain("mailto:hello@sweetsuccessfundraising.com");
     expect(quotePage).toContain("Not ready yet? Questions? ");
     expect(quotePage).not.toContain("reply to the quote email");
+    expect(quotePage).toContain("On the next page, you'll pick a start window and confirm your participants and goal.");
     expect(quotePage).toContain("Start my fundraiser");
     expect(quotePage).toContain("We've emailed a copy of this quote to");
     expect(quotePage).not.toMatch(/application|applied|your campaign|saved your application/i);

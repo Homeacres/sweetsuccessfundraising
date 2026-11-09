@@ -1,6 +1,6 @@
 import { checkServiceArea, formatPostal } from "@/lib/area";
 import { prospectActionUrls, prospectReplyTo } from "@/lib/email/prospect";
-import { applyAdminRecipient, deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
+import { applyAdminRecipient, applyEmailsWillSend, deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
 import { parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable } from "@/lib/apply-sport";
 import { bagEstimate, type BagEstimate } from "@/lib/estimate";
 import { dollarsToCents } from "@/lib/money";
@@ -28,8 +28,25 @@ export type ApplyInput = {
 };
 
 export type ApplyResult =
-  | { ok: true; already?: boolean; outOfArea?: boolean; emailed: boolean; summary: BagEstimate | null; startUrl: string | null }
+  | { ok: true; already?: boolean; outOfArea?: boolean; emailed: boolean; summary: BagEstimate | null; startUrl: string | null; notices?: ApplyNotice[] }
   | { ok: false; error: string; status: number };
+
+/** A retry of the same estimate inside this window reuses the saved row and does not send another quote. */
+export const QUOTE_REUSE_MS = 10 * 60 * 1000;
+
+export function sameRecentQuote(
+  row: { created_at?: string | null; organization_name?: string | null; sport?: string | null; participant_count_estimate?: number | null; fundraising_goal_estimate_cad?: number | null },
+  input: { team: string; participants: number; goalDollars: number },
+  sport: string,
+  now = Date.now(),
+): boolean {
+  const created = row.created_at ? new Date(row.created_at).getTime() : 0;
+  if (!created || now - created > QUOTE_REUSE_MS) return false;
+  return row.organization_name === input.team
+    && row.sport === sport
+    && row.participant_count_estimate === input.participants
+    && row.fundraising_goal_estimate_cad === dollarsToCents(input.goalDollars);
+}
 
 export function parseApplyBody(body: unknown): ApplyInput | { error: string } {
   if (!body || typeof body !== "object") return { error: "Missing details." };
@@ -125,11 +142,17 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
 
   const { data: existing, error: existingError } = await db
     .from("organizers")
-    .select("organizer_id")
+    .select("organizer_id, created_at, organization_name, sport, participant_count_estimate, fundraising_goal_estimate_cad")
     .eq("email", input.email)
     .maybeSingle();
   if (existingError) throw existingError;
-  if (existing) return { ok: true, already: true, emailed: false, summary: null, startUrl: null };
+  if (existing) {
+    if (sameRecentQuote(existing, { team: input.team, participants: participants.count, goalDollars: input.goalDollars }, resolvedSport.sport)) {
+      const links = prospectActionUrls(existing.organizer_id);
+      return { ok: true, emailed: false, summary, startUrl: links?.startUrl ?? null };
+    }
+    return { ok: true, already: true, emailed: false, summary: null, startUrl: null };
+  }
 
   const { data: inserted, error: insertError } = await db.from("organizers").insert({
     first_name: input.firstName,
@@ -151,7 +174,18 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     notes: `Postal code: ${formatPostal(area.postal)}`,
   }).select("organizer_id").single();
   if (insertError) {
-    if (insertError.code === "23505") return { ok: true, already: true, emailed: false, summary: null, startUrl: null };
+    if (insertError.code === "23505") {
+      const { data: raced } = await db
+        .from("organizers")
+        .select("organizer_id, created_at, organization_name, sport, participant_count_estimate, fundraising_goal_estimate_cad")
+        .eq("email", input.email)
+        .maybeSingle();
+      if (raced && sameRecentQuote(raced, { team: input.team, participants: participants.count, goalDollars: input.goalDollars }, resolvedSport.sport)) {
+        const links = prospectActionUrls(raced.organizer_id);
+        return { ok: true, emailed: false, summary, startUrl: links?.startUrl ?? null };
+      }
+      return { ok: true, already: true, emailed: false, summary: null, startUrl: null };
+    }
     throw insertError;
   }
   const links = inserted?.organizer_id ? prospectActionUrls(inserted.organizer_id) : null;
@@ -175,11 +209,10 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     unsubscribeUrl: links?.unsubscribeUrl,
     replyTo: inserted?.organizer_id ? prospectReplyTo(inserted.organizer_id) : null,
   });
-  const emailed = await sendApplyNotices(notices);
-  return { ok: true, emailed, summary, startUrl: links?.startUrl ?? null };
+  return { ok: true, emailed: notices.length > 0 && applyEmailsWillSend(process.env), summary, startUrl: links?.startUrl ?? null, notices };
 }
 
-async function sendApplyNotices(notices: ApplyNotice[]): Promise<boolean> {
+export async function sendApplyNotices(notices: ApplyNotice[]): Promise<boolean> {
   try {
     const result = await deliverApplyNotices({
       notices,

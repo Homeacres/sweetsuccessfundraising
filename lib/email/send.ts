@@ -76,6 +76,7 @@ export async function sendEmail(message: OutboundEmail): Promise<string | null> 
       from: requiredEnv("RESEND_FROM"),
       ...resendBody(message, process.env),
     }),
+    signal: AbortSignal.timeout(8000),
   });
 
   const body = (await response.json().catch(() => null)) as { id?: string; message?: string } | null;

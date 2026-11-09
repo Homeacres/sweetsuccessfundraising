@@ -1,6 +1,8 @@
-import { redirect } from "next/navigation";
+import { after } from "next/server";
+import { confirmSuccessCopy } from "@/lib/confirm-copy";
 import { dollarsToCents } from "@/lib/money";
-import { organizerActionSecret, signOrganizerAction, verifyOrganizerAction } from "@/lib/organizer-token";
+import { requestTurnaroundText } from "@/lib/launch";
+import { organizerActionSecret, verifyOrganizerAction } from "@/lib/organizer-token";
 import { sendRequestReceived } from "@/lib/flow-mail";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { cleanText, isEmail } from "@/lib/text";
@@ -12,7 +14,7 @@ export async function POST(request: Request) {
   const token = String(form.get("token") || "");
   const secret = organizerActionSecret();
   const parsed = secret ? verifyOrganizerAction(token, "start", secret) : null;
-  if (!parsed) redirect("/o/start/invalid");
+  if (!parsed) return Response.json({ ok: false, error: "This link is not valid." }, { status: 400 });
   const windowId = String(form.get("windowId") || "");
   const participants = Number(form.get("participants"));
   const goal = Number(form.get("goal"));
@@ -26,13 +28,13 @@ export async function POST(request: Request) {
   const postal = cleanText(form.get("postal"), 10);
   const howHeard = cleanText(form.get("howHeard"), 80);
   if (!windowId || !team || !firstName || !lastName || !isEmail(email) || !sport || !Number.isInteger(participants) || participants < 1 || participants > 200 || !Number.isFinite(goal) || goal < 100) {
-    redirect(`/o/start/${token}`);
+    return Response.json({ ok: false, error: "Check the form and try again." }, { status: 400 });
   }
   const db = supabaseAdmin();
   const { data: window } = await db.from("launch_windows").select("window_id").eq("window_id", windowId).eq("is_open", true).maybeSingle();
-  if (!window) redirect(`/o/start/${token}`);
+  if (!window) return Response.json({ ok: false, error: "That start window is no longer open." }, { status: 400 });
   const now = new Date().toISOString();
-  const { error } = await db.from("organizers").update({
+  const { data: saved, error } = await db.from("organizers").update({
     organization_name: team,
     first_name: firstName,
     last_name: lastName,
@@ -50,9 +52,9 @@ export async function POST(request: Request) {
     confirmed_participant_count: participants,
     confirmed_goal_cents: dollarsToCents(goal),
     review_status: "pending",
-  }).eq("organizer_id", parsed.organizerId).is("request_submitted_at", null);
-  if (error) redirect(`/o/start/${token}`);
-  await sendRequestReceived(parsed.organizerId);
-  const next = secret ? signOrganizerAction(parsed.organizerId, "start", secret) : token;
-  redirect(`/o/start/${next}`);
+  }).eq("organizer_id", parsed.organizerId).is("request_submitted_at", null).select("organizer_id");
+  if (error) return Response.json({ ok: false, error: "We couldn't save that. Please try again." }, { status: 500 });
+  if (saved?.length) after(() => sendRequestReceived(parsed.organizerId));
+  const copy = confirmSuccessCopy(team, requestTurnaroundText());
+  return Response.json({ ok: true, heading: copy.heading, body: copy.body });
 }

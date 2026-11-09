@@ -88,9 +88,14 @@ describe("public sign-up token", () => {
     const formAt = join.indexOf("<ParentSignupForm");
     expect(doneAt).toBeGreaterThan(-1);
     expect(formAt).toBeGreaterThan(doneAt);
-    expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("Confirm your fundraiser");
-    expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("We've got your {details.team} request!");
-    expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("confirm your start window {shortly}");
+    expect(readFileSync("components/ConfirmRequestForm.tsx", "utf8")).toContain("Confirm your fundraiser");
+    expect(readFileSync("components/ConfirmRequestForm.tsx", "utf8")).toContain("Send my request");
+    expect(readFileSync("components/ConfirmRequestForm.tsx", "utf8")).toContain("disabled={pending}");
+    expect(readFileSync("lib/confirm-copy.ts", "utf8")).toContain("We've got your ${team} request!");
+    expect(readFileSync("lib/confirm-copy.ts", "utf8")).toContain("confirm your start window ${shortly}");
+    expect(readFileSync("app/api/o/start/route.ts", "utf8")).not.toContain("redirect(");
+    expect(readFileSync("app/api/o/start/route.ts", "utf8")).toContain("is(\"request_submitted_at\", null)");
+    expect(readFileSync("app/api/apply/route.ts", "utf8")).toContain("after(");
     expect(readFileSync("components/FlowScreens.tsx", "utf8")).not.toContain("48 hours");
     expect(readFileSync("components/FlowScreens.tsx", "utf8")).not.toContain("is not on sale yet");
     expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("Not right now");

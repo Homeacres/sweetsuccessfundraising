@@ -1,6 +1,8 @@
-import { parseApplyBody, submitApplication } from "@/lib/apply";
+import { after } from "next/server";
+import { sendApplyNotices, parseApplyBody, submitApplication } from "@/lib/apply";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 20;
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -16,7 +18,12 @@ export async function POST(request: Request) {
   try {
     const result = await submitApplication(parsed);
     if (!result.ok) return Response.json({ ok: false, error: result.error }, { status: result.status });
-    return Response.json(result);
+    if (result.notices?.length) {
+      const notices = result.notices;
+      after(() => sendApplyNotices(notices));
+    }
+    const { notices: _notices, ...body } = result;
+    return Response.json(body);
   } catch (error) {
     console.error("apply failed", error instanceof Error ? error.message : "error");
     return Response.json({ ok: false, error: "We couldn't save that. Please try again." }, { status: 500 });

@@ -47,7 +47,8 @@ describe("prospect copy", () => {
     expect(quote.text).toContain("Bags start at $12 (GST included), and your group makes $5 or more on every bag sold. That's at least 40% of every sale.");
     expect(quote.text).toContain("We love working with local groups like yours.");
     expect(quote.text).not.toContain("keeps $5");
-    expect(quote.text).toContain("Prices include GST. Single bags only for now.");
+    expect(quote.text).toContain("Single bags only for now.");
+    expect(quote.text).not.toContain("Prices include GST.");
     expect(quote.text).toContain("Start my fundraiser: https://preview.example/o/start/token");
     expect(quote.text).toContain(SIGN_OFF_NAME);
     expect(quote.html).toContain(">Start my fundraiser</a>");
@@ -97,9 +98,11 @@ describe("activity lines", () => {
     }
     const hockey = prospectQuoteEmail({ ...fields, sport: "Hockey" });
     const greeting = hockey.text.indexOf("Hi Pat,");
+    const thanks = hockey.text.indexOf("Thanks for reaching out.");
     const line = hockey.text.indexOf("We love working with hockey teams.");
-    const luck = hockey.text.indexOf("Thanks for reaching out. Good luck to Hawks.");
-    expect(greeting).toBeLessThan(line);
+    const luck = hockey.text.indexOf("Good luck to Hawks!");
+    expect(greeting).toBeLessThan(thanks);
+    expect(thanks).toBeLessThan(line);
     expect(line).toBeLessThan(luck);
     const approved = approvedEmail({
       firstName: "Pat",

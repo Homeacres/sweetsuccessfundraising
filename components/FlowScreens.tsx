@@ -1,4 +1,6 @@
+import { ConfirmRequestForm } from "@/components/ConfirmRequestForm";
 import { CopyLink } from "@/components/CopyLink";
+import { confirmSuccessCopy } from "@/lib/confirm-copy";
 import { LEADERBOARD_OPT_IN_LABEL, requestTurnaroundText } from "@/lib/launch";
 import { starSellerLine } from "@/lib/standings";
 
@@ -27,72 +29,19 @@ export function StartRequestForm(props: {
 }) {
   const details = props.details;
   if (props.already) {
-    const shortly = requestTurnaroundText();
+    const copy = confirmSuccessCopy(details.team, requestTurnaroundText());
     return (
       <main className="page wrap">
         <div className="card" style={{ maxWidth: 640 }}>
-          <h1>We've got your {details.team} request!</h1>
-          <p>We'll check our calendar and confirm your start window {shortly}. Nothing starts until we confirm with you, and nothing goes on sale before your start date. Watch your inbox for our email.</p>
+          <h1>{copy.heading}</h1>
+          <p>{copy.body}</p>
         </div>
       </main>
     );
   }
   return (
     <main className="page wrap">
-      <div className="card" style={{ maxWidth: 640 }}>
-        <h1>Confirm your fundraiser</h1>
-        <p>These details come from your estimate. Pick a start window, change anything that needs it, then confirm.</p>
-        <form method="post" action="/api/o/start">
-          <input type="hidden" name="token" value={props.token} />
-          <label htmlFor="team">Team, Association or Club name</label>
-          <input id="team" name="team" required defaultValue={details.team} />
-          <div className="row two">
-            <div>
-              <label htmlFor="firstName">First name</label>
-              <input id="firstName" name="firstName" required defaultValue={details.firstName} />
-            </div>
-            <div>
-              <label htmlFor="lastName">Last name</label>
-              <input id="lastName" name="lastName" required defaultValue={details.lastName} />
-            </div>
-          </div>
-          <label htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" required defaultValue={details.email} />
-          <label htmlFor="phone">Phone <span className="fine">(optional)</span></label>
-          <input id="phone" name="phone" type="tel" defaultValue={details.phone} />
-          <label htmlFor="sport">Sport / Activity</label>
-          <input id="sport" name="sport" required defaultValue={details.sport} />
-          <div className="row two">
-            <div>
-              <label htmlFor="city">City</label>
-              <input id="city" name="city" defaultValue={details.city} />
-            </div>
-            <div>
-              <label htmlFor="postal">Postal code</label>
-              <input id="postal" name="postal" defaultValue={details.postal} />
-            </div>
-          </div>
-          {details.province ? <p className="fine">Province {details.province}</p> : null}
-          <label htmlFor="howHeard">How did you hear about us?</label>
-          <input id="howHeard" name="howHeard" defaultValue={details.howHeard} />
-          <div className="row two">
-            <div>
-              <label htmlFor="participants">Participants</label>
-              <input id="participants" name="participants" type="number" min={1} max={200} required defaultValue={details.participants} />
-            </div>
-            <div>
-              <label htmlFor="goal">Goal the group keeps (CAD)</label>
-              <input id="goal" name="goal" type="number" min={100} required defaultValue={details.goal} />
-            </div>
-          </div>
-          <label htmlFor="windowId">Start window</label>
-          <select id="windowId" name="windowId" required defaultValue="">
-            <option value="" disabled>Select a window</option>
-            {props.windows.map((window) => <option key={window.id} value={window.id}>{window.label}</option>)}
-          </select>
-          <button className="btn btn-navy" type="submit" style={{ marginTop: 16 }}>Confirm</button>
-        </form>
-      </div>
+      <ConfirmRequestForm details={details} windows={props.windows} token={props.token} />
     </main>
   );
 }
