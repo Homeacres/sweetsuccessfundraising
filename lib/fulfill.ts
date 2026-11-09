@@ -96,6 +96,7 @@ export async function sendOrderReceipt(order: PaidOrder): Promise<void> {
       qty?: number;
       gross_cents?: number;
       from_mix_pack?: boolean;
+      bundle_label?: string | null;
     };
     return {
       player: (line.cp_id && names.get(line.cp_id)) || "Participant",
@@ -103,6 +104,7 @@ export async function sendOrderReceipt(order: PaidOrder): Promise<void> {
       qty: line.qty ?? 0,
       grossCents: line.gross_cents ?? 0,
       mix: Boolean(line.from_mix_pack),
+      bundle: line.bundle_label || null,
     };
   });
 

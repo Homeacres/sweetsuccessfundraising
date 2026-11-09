@@ -1,3 +1,6 @@
+import { bundlePickError, type BundlePick } from "@/lib/bundles";
+import { shopBundles } from "@/lib/catalog";
+import { splitBundleCents } from "@/lib/bundles";
 import { todayInEdmonton } from "@/lib/dates";
 import { appUrl } from "@/lib/env";
 import { shopPhase } from "@/lib/launch";
@@ -19,6 +22,14 @@ type PricedRow = {
   from_mix_pack: boolean;
   gross_cents: number;
   team_share_cents: number;
+  bundle_offer_id: string | null;
+  bundle_label: string | null;
+};
+
+type IncomingBundle = {
+  offerId?: string;
+  cpId?: string;
+  picks?: BundlePick[];
 };
 
 export async function createCheckout(body: unknown): Promise<CheckoutResult> {
@@ -32,14 +43,18 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
   if (!teamSlug) return { ok: false, error: "Missing team.", status: 400 };
   if (!buyerName) return { ok: false, error: "Enter the buyer's name.", status: 400 };
   if (!isEmail(buyerEmail)) return { ok: false, error: "Enter a valid email address.", status: 400 };
-  if (!Array.isArray(raw.lines)) return { ok: false, error: "Your cart is empty.", status: 400 };
+  const incomingLines = Array.isArray(raw.lines) ? (raw.lines as IncomingLine[]) : [];
+  const incomingBundle = raw.bundle && typeof raw.bundle === "object" ? (raw.bundle as IncomingBundle) : null;
+  if (!incomingLines.length && !incomingBundle?.offerId) return { ok: false, error: "Your cart is empty.", status: 400 };
 
-  let normalized;
-  try {
-    normalized = normalizeCartLines(raw.lines as IncomingLine[]);
-  } catch (error) {
-    if (error instanceof CartPricingError) return { ok: false, error: error.message, status: 400 };
-    throw error;
+  let normalized: ReturnType<typeof normalizeCartLines> = [];
+  if (incomingLines.length) {
+    try {
+      normalized = normalizeCartLines(incomingLines);
+    } catch (error) {
+      if (error instanceof CartPricingError) return { ok: false, error: error.message, status: 400 };
+      throw error;
+    }
   }
 
   const db = supabaseAdmin();
@@ -58,7 +73,9 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
     return { ok: false, error: phase === "before" ? "This fundraiser has not started." : "This fundraiser is closed.", status: 400 };
   }
 
-  const cpIds = [...new Set(normalized.map((line) => line.cpId))];
+  const bundleCpId = incomingBundle?.cpId ? cleanText(incomingBundle.cpId, 80) : "";
+  if (incomingBundle?.offerId && !bundleCpId) return { ok: false, error: "Choose who the pack is for.", status: 400 };
+  const cpIds = [...new Set([...normalized.map((line) => line.cpId), ...(bundleCpId ? [bundleCpId] : [])])];
   const { data: roster, error: rosterError } = await db
     .from("campaign_participants")
     .select("cp_id, family_id")
@@ -69,8 +86,13 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
     return { ok: false, error: "One of those participants is not on this team.", status: 400 };
   }
 
-  const productIds = [...new Set(normalized.map((line) => line.productId))];
-  const bagIds = [...new Set(normalized.map((line) => line.bagTypeId))];
+  const bundlePicks = (incomingBundle?.picks ?? []).map((pick) => ({
+    productId: cleanText(pick?.productId, 80),
+    bagTypeId: cleanText(pick?.bagTypeId, 80),
+    qty: Number(pick?.qty),
+  }));
+  const productIds = [...new Set([...normalized.map((line) => line.productId), ...bundlePicks.map((pick) => pick.productId)].filter(Boolean))];
+  const bagIds = [...new Set([...normalized.map((line) => line.bagTypeId), ...bundlePicks.map((pick) => pick.bagTypeId)].filter(Boolean))];
   const [productsRes, bagsRes] = await Promise.all([
     db.from("products").select("product_id").eq("is_active", true).in("product_id", productIds),
     db.from("bag_types").select("bag_type_id").eq("is_active", true).in("bag_type_id", bagIds),
@@ -81,22 +103,62 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
     return { ok: false, error: "One of those candies is no longer for sale.", status: 400 };
   }
 
-  const payload = normalized.map((line) => ({
-    line_no: line.lineNo,
-    cp_id: line.cpId,
-    product_id: line.productId,
-    bag_type_id: line.bagTypeId,
-    qty: line.qty,
-    from_mix_pack: line.fromMixPack,
-  }));
-
-  const { data: priced, error: priceError } = await db.rpc("fn_price_cart", { p_items: payload });
-  if (priceError) {
-    const message = priceError.message || "Could not price this order.";
-    const safe = /bag|cart|order needs/i.test(message) ? message : "Could not price this order.";
-    return { ok: false, error: safe, status: 400 };
+  const singleRows: PricedRow[] = [];
+  if (normalized.length) {
+    const payload = normalized.map((line) => ({
+      line_no: line.lineNo,
+      cp_id: line.cpId,
+      product_id: line.productId,
+      bag_type_id: line.bagTypeId,
+      qty: line.qty,
+      from_mix_pack: line.fromMixPack,
+    }));
+    const { data: priced, error: priceError } = await db.rpc("fn_price_cart", { p_items: payload });
+    if (priceError) {
+      const message = priceError.message || "Could not price this order.";
+      const safe = /bag|cart|order needs/i.test(message) ? message : "Could not price this order.";
+      return { ok: false, error: safe, status: 400 };
+    }
+    for (const row of (priced ?? []) as Omit<PricedRow, "bundle_offer_id" | "bundle_label">[]) {
+      singleRows.push({ ...row, bundle_offer_id: null, bundle_label: null });
+    }
+    if (!singleRows.length) return { ok: false, error: "Could not price this order.", status: 400 };
   }
-  const rows = (priced ?? []) as PricedRow[];
+
+  const bundleRows: PricedRow[] = [];
+  let bundleStripe: { label: string; priceCents: number; bagCount: number } | null = null;
+  if (incomingBundle?.offerId) {
+    const offer = (await shopBundles()).find((item) => item.offerId === incomingBundle.offerId);
+    if (!offer) return { ok: false, error: "That pack is not for sale.", status: 400 };
+    if (!bundleCpId) return { ok: false, error: "Choose who the pack is for.", status: 400 };
+    const activeProducts = new Set((productsRes.data ?? []).map((row) => row.product_id));
+    const pickError = bundlePickError({
+      bagCount: offer.bagCount,
+      standardBagTypeId: offer.bagTypeId,
+      picks: bundlePicks,
+      activeProductIds: activeProducts,
+    });
+    if (pickError) return { ok: false, error: pickError, status: 400 };
+    const grossShares = splitBundleCents(offer.priceCents, bundlePicks.map((pick) => pick.qty));
+    const shareShares = splitBundleCents(offer.teamShareCents, bundlePicks.map((pick) => pick.qty));
+    bundlePicks.forEach((pick, index) => {
+      bundleRows.push({
+        line_no: 0,
+        cp_id: bundleCpId,
+        product_id: pick.productId,
+        bag_type_id: offer.bagTypeId,
+        qty: pick.qty,
+        from_mix_pack: false,
+        gross_cents: grossShares[index],
+        team_share_cents: shareShares[index],
+        bundle_offer_id: offer.offerId,
+        bundle_label: offer.label,
+      });
+    });
+    bundleStripe = { label: offer.label, priceCents: offer.priceCents, bagCount: offer.bagCount };
+  }
+
+  const rows = [...bundleRows, ...singleRows].map((row, index) => ({ ...row, line_no: index + 1 }));
   if (!rows.length) return { ok: false, error: "Could not price this order.", status: 400 };
 
   const totalBags = rows.reduce((sum, row) => sum + row.qty, 0);
@@ -135,6 +197,8 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
       gross_cents: row.gross_cents,
       team_share_cents: row.team_share_cents,
       from_mix_pack: row.from_mix_pack,
+      bundle_offer_id: row.bundle_offer_id,
+      bundle_label: row.bundle_label,
       display_name: sportThemedName(nameByProduct.get(row.product_id)),
     }));
 
@@ -168,6 +232,7 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
       gross_cents: row.gross_cents,
       team_share_cents: row.team_share_cents,
       from_mix_pack: row.from_mix_pack,
+      bundle_offer_id: row.bundle_offer_id,
     })),
   );
   if (lineError) {
@@ -186,14 +251,32 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
       metadata: { order_id: orderId, campaign_id: campaign.campaign_id },
       payment_intent_data: { metadata: { order_id: orderId } },
       line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: "cad",
-            unit_amount: totalCents,
-            product_data: stripeCheckoutProduct({ campaignName: campaign.campaign_name, totalBags }),
-          },
-        },
+        ...(bundleStripe
+          ? [{
+              quantity: 1,
+              price_data: {
+                currency: "cad",
+                unit_amount: bundleStripe.priceCents,
+                product_data: {
+                  name: `${campaign.campaign_name} · ${bundleStripe.label}`,
+                  description: `${bundleStripe.bagCount} standard bags. Bulk delivery to the organizer.`,
+                },
+              },
+            }]
+          : []),
+        ...(singleRows.length
+          ? [{
+              quantity: 1,
+              price_data: {
+                currency: "cad",
+                unit_amount: singleRows.reduce((sum, row) => sum + row.gross_cents, 0),
+                product_data: stripeCheckoutProduct({
+                  campaignName: campaign.campaign_name,
+                  totalBags: singleRows.reduce((sum, row) => sum + row.qty, 0),
+                }),
+              },
+            }]
+          : []),
       ],
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout/cancelled`,

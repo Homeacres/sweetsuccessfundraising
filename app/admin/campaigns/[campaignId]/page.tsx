@@ -2,6 +2,7 @@ import { AdminNav } from "@/components/AdminNav";
 import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/PrintButton";
 import { isAdminRequest } from "@/lib/admin-auth";
+import { packLines } from "@/lib/pick-list";
 import { formatUserDate } from "@/lib/dates";
 import { formatCad, formatTeamCad } from "@/lib/money";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -9,19 +10,18 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export const metadata = { title: "Close-out", robots: { index: false, follow: false } };
 
 type PickRow = {
-  cp_id: string;
-  player_first_name: string;
-  player_last_name: string;
-  order_id: string;
-  buyer_name: string;
-  buyer_email: string;
-  buyer_phone: string | null;
-  candy_name: string;
-  base_candy: string;
-  bag_type_code: string;
+  cpId: string;
+  playerFirst: string;
+  playerLast: string;
+  orderId: string;
+  buyerName: string;
+  buyerEmail: string;
+  buyerPhone: string | null;
+  candyName: string;
+  bundleLabel: string;
+  bagCode: string;
   bags: number;
-  includes_mix_pack: boolean;
-  ordered_at: string;
+  mix: boolean;
 };
 
 export default async function CampaignAdminPage({
@@ -44,36 +44,26 @@ export default async function CampaignAdminPage({
   if (error) throw error;
   if (!campaign) notFound();
 
-  const [totalsRes, pickRes, deliveryRes, kpiRes] = await Promise.all([
+  const [totalsRes, deliveryRes, kpiRes, picks] = await Promise.all([
     db.from("v_campaign_production_totals").select("product_name, bag_type_code, bags, orders").eq("campaign_id", campaignId),
-    db
-      .from("v_organizer_pick_list")
-      .select("cp_id, player_first_name, player_last_name, order_id, buyer_name, buyer_email, buyer_phone, candy_name, base_candy, bag_type_code, bags, includes_mix_pack, ordered_at")
-      .eq("campaign_id", campaignId),
     db.from("deliveries").select("delivery_id, status, scheduled_for, delivered_at, received_by, bags_delivered, notes").eq("campaign_id", campaignId).order("created_at", { ascending: false }),
     db.from("v_kpi_bags_per_order").select("paid_orders, bags, avg_bags_per_order").eq("campaign_id", campaignId).maybeSingle(),
+    packLines(campaignId),
   ]);
-  for (const result of [totalsRes, pickRes, deliveryRes, kpiRes]) {
+  for (const result of [totalsRes, deliveryRes, kpiRes]) {
     if (result.error) throw result.error;
   }
 
-  const picks = [...((pickRes.data ?? []) as PickRow[])].sort(
-    (a, b) =>
-      a.player_last_name.localeCompare(b.player_last_name) ||
-      a.player_first_name.localeCompare(b.player_first_name) ||
-      a.buyer_name.localeCompare(b.buyer_name) ||
-      a.candy_name.localeCompare(b.candy_name),
-  );
   const grouped = new Map<string, { name: string; orders: Map<string, { buyer: string; email: string; phone: string | null; lines: PickRow[] }> }>();
   for (const row of picks) {
-    const player = grouped.get(row.cp_id) ?? {
-      name: `${row.player_first_name} ${row.player_last_name}`.trim(),
+    const player = grouped.get(row.cpId) ?? {
+      name: `${row.playerFirst} ${row.playerLast}`.trim(),
       orders: new Map(),
     };
-    const order = player.orders.get(row.order_id) ?? { buyer: row.buyer_name, email: row.buyer_email, phone: row.buyer_phone, lines: [] };
+    const order = player.orders.get(row.orderId) ?? { buyer: row.buyerName, email: row.buyerEmail, phone: row.buyerPhone, lines: [] };
     order.lines.push(row);
-    player.orders.set(row.order_id, order);
-    grouped.set(row.cp_id, player);
+    player.orders.set(row.orderId, order);
+    grouped.set(row.cpId, player);
   }
 
   return (
@@ -128,8 +118,8 @@ export default async function CampaignAdminPage({
                 <div className="muted">{order.email}{order.phone ? ` · ${order.phone}` : ""}</div>
                 <ul>
                   {order.lines.map((line, index) => (
-                    <li key={`${line.candy_name}-${line.base_candy}-${index}`}>
-                      {line.candy_name}{line.base_candy && line.base_candy !== line.candy_name ? ` · ${line.base_candy}` : ""} · {line.bag_type_code} · {line.bags}{line.includes_mix_pack ? " · includes mix pack" : ""}
+                    <li key={`${line.candyName}-${line.bundleLabel}-${index}`}>
+                      {line.bundleLabel ? `${line.bundleLabel}: ` : ""}{line.candyName} · {line.bagCode} · {line.bags}{line.mix ? " · includes mix pack" : ""}
                     </li>
                   ))}
                 </ul>

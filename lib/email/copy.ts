@@ -132,6 +132,7 @@ export type ReceiptLine = {
   qty: number;
   grossCents: number;
   mix: boolean;
+  bundle?: string | null;
 };
 
 export function receiptEmail(input: {
@@ -142,14 +143,14 @@ export function receiptEmail(input: {
   lines: ReceiptLine[];
 }): { subject: string; html: string; text: string } {
   const lineText = input.lines
-    .map((line) => `${line.player} — ${line.candy} × ${line.qty}${line.mix ? " (mix pack)" : ""} — ${formatCad(line.grossCents)}`)
+    .map((line) => `${line.bundle ? `${line.bundle}: ` : ""}${line.player} — ${line.candy} × ${line.qty}${line.mix ? " (mix pack)" : ""} — ${formatCad(line.grossCents)}`)
     .join("\n");
   const text = `Hi ${input.buyerName}, thanks for supporting ${input.team}.\n\n${lineText}\n\nTotal: ${formatCad(input.totalCents)} for ${input.bags} bag${input.bags === 1 ? "" : "s"}.\n\nThere is no shipping address. Your order will be handed out by your team organizer.`;
   const html = `<p>Hi ${escapeHtml(input.buyerName)}, thanks for supporting <strong>${escapeHtml(input.team)}</strong>.</p>
 <ul>${input.lines
     .map(
       (line) =>
-        `<li>${escapeHtml(line.player)} — ${escapeHtml(line.candy)} × ${line.qty}${line.mix ? " (mix pack)" : ""} — ${formatCad(line.grossCents)}</li>`,
+        `<li>${line.bundle ? `${escapeHtml(line.bundle)}: ` : ""}${escapeHtml(line.player)} — ${escapeHtml(line.candy)} × ${line.qty}${line.mix ? " (mix pack)" : ""} — ${formatCad(line.grossCents)}</li>`,
     )
     .join("")}</ul>
 <p><strong>Total ${formatCad(input.totalCents)}</strong> · ${input.bags} bag${input.bags === 1 ? "" : "s"}</p>

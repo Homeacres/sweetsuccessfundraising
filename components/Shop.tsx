@@ -26,6 +26,15 @@ type Product = {
 };
 type Bag = { bagTypeId: string; code: string; name: string; teamShareCents: number };
 type Line = { cpId: string; productId: string; bagTypeId: string; qty: number; fromMixPack: boolean };
+type ShopBundle = {
+  offerId: string;
+  label: string;
+  bagCount: number;
+  bagTypeId: string;
+  priceCents: number;
+  isTest: boolean;
+};
+type BundleCart = { offerId: string; cpId: string; picks: { productId: string; qty: number }[] };
 
 export function Shop(props: {
   teamSlug: string;
@@ -44,10 +53,14 @@ export function Shop(props: {
   defaultQty: number;
   minBags: number;
   standardBagTypeId: string | null;
+  bundles: ShopBundle[];
 }) {
   const pickerRef = useRef<HTMLDivElement>(null);
   const [playerId, setPlayerId] = useState(props.initialCpId || props.players[0]?.cpId || "");
   const [lines, setLines] = useState<Line[]>([]);
+  const [bundle, setBundle] = useState<BundleCart | null>(null);
+  const [openOfferId, setOpenOfferId] = useState<string | null>(null);
+  const [draftPicks, setDraftPicks] = useState<Record<string, number>>({});
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
@@ -65,6 +78,11 @@ export function Shop(props: {
   }, [lines, props.tiers, props.bagRows, props.minBags]);
 
   const totals = cartTotals(priced.lines);
+  const openOffer = props.bundles.find((offer) => offer.offerId === openOfferId) ?? null;
+  const draftBags = Object.values(draftPicks).reduce((sum, qty) => sum + qty, 0);
+  const bundleOffer = bundle ? props.bundles.find((offer) => offer.offerId === bundle.offerId) ?? null : null;
+  const displayCents = (priced.lines.length ? totals.grossCents : 0) + (bundleOffer?.priceCents ?? 0);
+  const displayBags = (priced.lines.length ? totals.bags : 0) + (bundleOffer?.bagCount ?? 0);
   const mixQuote = useMemo(() => {
     if (!props.standardBagTypeId || !playerId || props.products.length === 0) return null;
     try {
@@ -125,7 +143,7 @@ export function Shop(props: {
       document.getElementById("buyer-name")?.focus();
       return;
     }
-    if (!priced.lines.length) {
+    if (!bundle && !priced.lines.length) {
       setError(priced.error || `Add at least ${props.minBags} bag${props.minBags === 1 ? "" : "s"}.`);
       return;
     }
@@ -141,6 +159,17 @@ export function Shop(props: {
           buyerEmail,
           buyerPhone,
           lines,
+          bundle: bundle && bundleOffer
+            ? {
+                offerId: bundle.offerId,
+                cpId: bundle.cpId,
+                picks: bundle.picks.map((pick) => ({
+                  productId: pick.productId,
+                  bagTypeId: bundleOffer.bagTypeId,
+                  qty: pick.qty,
+                })),
+              }
+            : null,
         }),
       });
       const data = (await response.json()) as { ok?: boolean; url?: string; error?: string };
@@ -181,6 +210,53 @@ export function Shop(props: {
         ))}
       </div>
       {props.players.length === 0 && <p>No participants are listed for this team yet.</p>}
+
+      {props.bundles.length > 0 && (
+        <section style={{ marginTop: 22 }}>
+          <h2 style={{ fontSize: 28 }}>Packs</h2>
+          <div className="grid-3">
+            {props.bundles.map((offer) => (
+              <article className="panel" key={offer.offerId}>
+                <h3>{offer.label}</h3>
+                {offer.isTest ? <p className="fine">TEST pricing</p> : null}
+                <p>{offer.bagCount} bags · {formatCad(offer.priceCents)}</p>
+                <p className="muted">pick any {offer.bagCount} standard bags</p>
+                <button className="btn btn-navy" type="button" disabled={!canOrder || !playerId} onClick={() => { setOpenOfferId(offer.offerId); setDraftPicks({}); }}>
+                  Choose bags
+                </button>
+              </article>
+            ))}
+          </div>
+          {openOffer && (
+            <div className="panel" style={{ marginTop: 12 }}>
+              <h3>{openOffer.label}</h3>
+              <p className="muted">{draftBags} of {openOffer.bagCount} standard bags</p>
+              {props.products.map((product) => (
+                <div className="qty-line" key={product.productId}>
+                  <strong>{product.displayName || "Candy"}</strong>
+                  <div className="stepper">
+                    <button type="button" aria-label={`Fewer ${product.displayName || "candy"} in ${openOffer.label}`} onClick={() => setDraftPicks((current) => ({ ...current, [product.productId]: Math.max(0, (current[product.productId] ?? 0) - 1) }))}>−</button>
+                    <span>{draftPicks[product.productId] ?? 0}</span>
+                    <button type="button" aria-label={`More ${product.displayName || "candy"} in ${openOffer.label}`} onClick={() => setDraftPicks((current) => ({ ...current, [product.productId]: (current[product.productId] ?? 0) + 1 }))} disabled={draftBags >= openOffer.bagCount}>+</button>
+                  </div>
+                </div>
+              ))}
+              <button
+                className="btn btn-navy"
+                type="button"
+                disabled={draftBags !== openOffer.bagCount}
+                onClick={() => {
+                  const picks = Object.entries(draftPicks).filter(([, qty]) => qty > 0).map(([productId, qty]) => ({ productId, qty }));
+                  setBundle({ offerId: openOffer.offerId, cpId: playerId, picks });
+                  setOpenOfferId(null);
+                }}
+              >
+                Add {openOffer.label}
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="grid-2" style={{ marginTop: 18 }}>
         <div className="candy">
@@ -244,7 +320,22 @@ export function Shop(props: {
         <form onSubmit={checkout}>
           <div className="panel">
             <h2 style={{ fontSize: 28, marginTop: 0 }}>Cart</h2>
-            {lines.length === 0 && <p className="muted">Choose a participant and add bags. The first tap starts at {props.defaultQty}.</p>}
+            {!bundle && lines.length === 0 && <p className="muted">Choose a participant and add bags. The first tap starts at {props.defaultQty}.</p>}
+            {bundleOffer && bundle && (
+              <div className="cart-line">
+                <div>
+                  <strong>{bundleOffer.label}</strong>
+                  <div className="muted">
+                    {bundle.picks.map((pick) => {
+                      const product = props.products.find((item) => item.productId === pick.productId);
+                      return `${product?.displayName || "Candy"} × ${pick.qty}`;
+                    }).join(", ")}
+                    {" · "}{formatCad(bundleOffer.priceCents)}
+                  </div>
+                </div>
+                <button className="btn btn-ghost" type="button" onClick={() => setBundle(null)}>Remove</button>
+              </div>
+            )}
             {lines.map((line) => {
               const player = props.players.find((item) => item.cpId === line.cpId);
               const product = props.products.find((item) => item.productId === line.productId);
@@ -268,7 +359,7 @@ export function Shop(props: {
                 </button>
               </div>
             )}
-            <p>{priced.lines.length > 0 ? `${totals.bags} bags · ${formatCad(totals.grossCents)}` : priced.error}</p>
+            <p>{displayBags > 0 ? `${displayBags} bags · ${formatCad(displayCents)}` : priced.error}</p>
 
             <label htmlFor="buyer-name">Your name</label>
             <input id="buyer-name" value={buyerName} onChange={(event) => setBuyerName(event.target.value)} autoComplete="name" required />
@@ -280,10 +371,10 @@ export function Shop(props: {
           </div>
           <div className="sticky-pay">
             <div>
-              <strong>{priced.lines.length ? formatCad(totals.grossCents) : "Add bags"}</strong>
-              <div className="muted" style={{ color: "rgba(255,255,255,0.7)" }}>{totals.bags || 0} bags</div>
+              <strong>{displayBags ? formatCad(displayCents) : "Add bags"}</strong>
+              <div className="muted" style={{ color: "rgba(255,255,255,0.7)" }}>{displayBags || 0} bags</div>
             </div>
-            <button className="btn btn-gold" type="submit" disabled={!canOrder || pending || !priced.lines.length}>
+            <button className="btn btn-gold" type="submit" disabled={!canOrder || pending || displayBags === 0}>
               {pending ? "Starting…" : "Checkout"}
             </button>
           </div>
