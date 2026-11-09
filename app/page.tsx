@@ -61,8 +61,8 @@ export default async function HomePage() {
           <div className="grid-3" style={{ marginTop: 28 }}>
             <article className="panel">
               <div className="step-no">01</div>
-              <h3>Apply online</h3>
-              <p>Tell us about the team. We confirm the campaign within 48 hours. No paperwork.</p>
+              <h3>Calculate your fundraiser</h3>
+              <p>Tell us about the team. The estimate stays on this page. No paperwork.</p>
             </article>
             <article className="panel">
               <div className="step-no">02</div>

@@ -14,7 +14,7 @@ export function Header() {
         <a href="/#how">How it works</a>
         <a href="/#products">Products</a>
         <a href="/#about">About</a>
-        <a className="btn btn-gold" href="/#apply">Apply</a>
+        <a className="btn btn-gold" href="/#apply">Get started</a>
       </nav>
     </header>
   );

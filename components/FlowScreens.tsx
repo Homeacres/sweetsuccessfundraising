@@ -4,41 +4,92 @@ import { starSellerLine } from "@/lib/standings";
 
 export type WindowChoice = { id: string; label: string };
 
-export function StartRequestForm(props: {
+export type ConfirmDetails = {
   team: string;
-  windows: WindowChoice[];
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  sport: string;
+  city: string;
+  postal: string;
+  province: string;
+  howHeard: string;
   participants: number;
   goal: number;
+};
+
+export function StartRequestForm(props: {
+  details: ConfirmDetails;
+  windows: WindowChoice[];
   token: string;
   already?: boolean;
 }) {
+  const details = props.details;
   if (props.already) {
     return (
       <main className="page wrap">
-        <div className="card" style={{ maxWidth: 560 }}>
+        <div className="card" style={{ maxWidth: 640 }}>
           <h1>We've got your request</h1>
-          <p>{props.team} is in review. Follow-up emails have stopped.</p>
+          <p>{details.team} is in review. Follow-up emails have stopped.</p>
         </div>
       </main>
     );
   }
   return (
     <main className="page wrap">
-      <div className="card" style={{ maxWidth: 560 }}>
-        <h1>Start my fundraiser</h1>
-        <p>Pick an open window for {props.team}, and confirm the participants and goal.</p>
+      <div className="card" style={{ maxWidth: 640 }}>
+        <h1>Confirm your fundraiser</h1>
+        <p>These details come from your estimate. Pick a start window, change anything that needs it, then confirm.</p>
         <form method="post" action="/api/o/start">
           <input type="hidden" name="token" value={props.token} />
+          <label htmlFor="team">Team, Association or Club name</label>
+          <input id="team" name="team" required defaultValue={details.team} />
+          <div className="row two">
+            <div>
+              <label htmlFor="firstName">First name</label>
+              <input id="firstName" name="firstName" required defaultValue={details.firstName} />
+            </div>
+            <div>
+              <label htmlFor="lastName">Last name</label>
+              <input id="lastName" name="lastName" required defaultValue={details.lastName} />
+            </div>
+          </div>
+          <label htmlFor="email">Email</label>
+          <input id="email" name="email" type="email" required defaultValue={details.email} />
+          <label htmlFor="phone">Phone <span className="fine">(optional)</span></label>
+          <input id="phone" name="phone" type="tel" defaultValue={details.phone} />
+          <label htmlFor="sport">Sport / Activity</label>
+          <input id="sport" name="sport" required defaultValue={details.sport} />
+          <div className="row two">
+            <div>
+              <label htmlFor="city">City</label>
+              <input id="city" name="city" defaultValue={details.city} />
+            </div>
+            <div>
+              <label htmlFor="postal">Postal code</label>
+              <input id="postal" name="postal" defaultValue={details.postal} />
+            </div>
+          </div>
+          {details.province ? <p className="fine">Province {details.province}</p> : null}
+          <label htmlFor="howHeard">How did you hear about us?</label>
+          <input id="howHeard" name="howHeard" defaultValue={details.howHeard} />
+          <div className="row two">
+            <div>
+              <label htmlFor="participants">Participants</label>
+              <input id="participants" name="participants" type="number" min={1} max={200} required defaultValue={details.participants} />
+            </div>
+            <div>
+              <label htmlFor="goal">Goal the group keeps (CAD)</label>
+              <input id="goal" name="goal" type="number" min={100} required defaultValue={details.goal} />
+            </div>
+          </div>
           <label htmlFor="windowId">Start window</label>
           <select id="windowId" name="windowId" required defaultValue="">
             <option value="" disabled>Select a window</option>
             {props.windows.map((window) => <option key={window.id} value={window.id}>{window.label}</option>)}
           </select>
-          <label htmlFor="participants">Participants</label>
-          <input id="participants" name="participants" type="number" min={1} max={200} required defaultValue={props.participants} />
-          <label htmlFor="goal">Goal the group keeps (CAD)</label>
-          <input id="goal" name="goal" type="number" min={100} required defaultValue={props.goal} />
-          <button className="btn btn-navy" type="submit" style={{ marginTop: 16 }}>Send my request</button>
+          <button className="btn btn-navy" type="submit" style={{ marginTop: 16 }}>Confirm</button>
         </form>
       </div>
     </main>

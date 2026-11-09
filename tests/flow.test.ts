@@ -85,6 +85,8 @@ describe("public sign-up token", () => {
     const formAt = join.indexOf("<ParentSignupForm");
     expect(doneAt).toBeGreaterThan(-1);
     expect(formAt).toBeGreaterThan(doneAt);
+    expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("Confirm your fundraiser");
+    expect(readFileSync("app/o/start/[token]/page.tsx", "utf8")).toContain("first_name");
     expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain("Add another child");
     expect(join).toContain("done=1&add=1");
     expect(readFileSync("supabase/migrations/20261109140000_leaderboard_opt_in.sql", "utf8")).toContain("leaderboard_opt_in boolean not null default false");

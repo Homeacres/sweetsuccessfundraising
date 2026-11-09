@@ -2,7 +2,7 @@ import type { BagEstimate } from "@/lib/estimate";
 import { formatTeamCad } from "@/lib/money";
 
 // COPY: pending CORA review
-export const TEAM_KEEP_ABOUT = "Teams keep about 40% of sales.";
+export const TEAM_KEEP_ABOUT = "Teams keep at least 40% of sales.";
 // COPY: pending CORA review
 export const TEAM_PAYOUT_ROUND = "The payout is always a round dollar amount.";
 

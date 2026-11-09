@@ -130,8 +130,8 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
 
   return (
     <form className="card" id="apply" onSubmit={onSubmit}>
-      <h2>Apply to run a fundraiser</h2>
-      <p className="hint">Tell us about the team. We'll confirm your campaign within 48 hours. No upfront cost.</p>
+      <h2>Calculate your fundraiser</h2>
+      <p className="hint">Tell us about the team. Your estimate stays on this page. No upfront cost.</p>
       <p>{TEAM_KEEP_ABOUT} {TEAM_PAYOUT_ROUND}</p>
       <div className="row two">
         <div>
@@ -203,7 +203,7 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
       </div>
       {error && <div className="alert error" role="alert">{error}</div>}
       <button className="btn btn-navy" type="submit" disabled={pending || sportsError}>
-        {pending ? "Sending…" : "Apply"}
+        {pending ? "Calculating…" : "See my estimate"}
       </button>
       <p className="fine">Your information is saved to Sweet Success and used to set up the fundraiser. It is not sold. The updates box starts unchecked.</p>
     </form>

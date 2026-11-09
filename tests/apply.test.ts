@@ -118,11 +118,17 @@ describe("participants", () => {
 });
 
 describe("organizer share copy", () => {
-  it("tells teams they keep about 40 percent and shows whole dollars", () => {
+  it("tells teams they keep at least 40 percent and shows whole dollars", () => {
     const page = readFileSync("app/page.tsx", "utf8");
     const form = readFileSync("components/ApplyForm.tsx", "utf8");
     const shop = readFileSync("components/Shop.tsx", "utf8");
     const quote = onPageQuote({ goal: "$2,000", bags: "400", bagsEach: "20" }).join("\n");
+    expect(TEAM_KEEP_ABOUT).toBe("Teams keep at least 40% of sales.");
+    expect(form).toContain("Calculate your fundraiser");
+    expect(form).toContain("See my estimate");
+    expect(form).not.toContain("Apply to run");
+    expect(readFileSync("components/Header.tsx", "utf8")).toContain("Get started");
+    expect(readFileSync("components/Header.tsx", "utf8")).not.toContain(">Apply<");
     expect(page).toContain("TEAM_KEEP_ABOUT");
     expect(page).toContain("TEAM_PAYOUT_ROUND");
     expect(form).toContain("TEAM_KEEP_ABOUT");
