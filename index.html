@@ -266,27 +266,10 @@
   .popup-close:hover { background: rgba(255,255,255,0.2); color: white; }
   .popup-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #E8C85A; margin-bottom: 8px; }
   .popup-headline { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 900; color: var(--white); line-height: 1; margin-bottom: 8px; }
-  .popup-sub { font-size: 14px; color: rgba(255,255,255,0.55); line-height: 1.5; }
   .popup-body { padding: 32px 36px 36px; }
-  .popup-field { margin-bottom: 18px; }
-  .popup-label { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--grey); margin-bottom: 6px; display: block; }
-  .popup-input { width: 100%; padding: 13px 16px; border: 1.5px solid #E8E0F0; border-radius: 10px; font-family: 'Barlow', sans-serif; font-size: 15px; color: var(--navy); background: #FAFAFA; outline: none; transition: all 0.15s; }
-  .popup-input::placeholder { color: #B0BAB0; }
-  .popup-input:focus { border-color: var(--blue); background: var(--white); box-shadow: 0 0 0 3px rgba(61,26,110,0.1); }
-  .popup-input.invalid { border-color: #ef5350; }
-  .btn-popup-submit { width: 100%; padding: 16px 24px; background: linear-gradient(135deg, #C9A84C 0%, #F0D875 40%, #B8922A 100%); color: #2D1A4E; border: none; border-radius: 10px; font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 1px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
-  .btn-popup-submit:hover { background: linear-gradient(135deg, #D4B85C 0%, #F5E085 40%, #C9A84C 100%); transform: translateY(-1px); }
-  .btn-popup-submit.loading { opacity: 0.7; pointer-events: none; }
-  .popup-spinner { width: 20px; height: 20px; border: 2px solid rgba(45,26,78,0.3); border-top-color: #2D1A4E; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
-  .btn-popup-submit.loading .popup-spinner { display: block; }
-  .btn-popup-submit.loading .popup-btn-text { display: none; }
-  .popup-fine-print { text-align: center; font-size: 11px; color: #B0BAB0; margin-top: 12px; line-height: 1.5; }
-  .popup-success { display: none; padding: 48px 36px; text-align: center; }
-  .popup-success.visible { display: block; }
-  .popup-success-icon { font-size: 48px; margin-bottom: 16px; }
-  .popup-success h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
-  .popup-success p { font-size: 15px; color: var(--grey); line-height: 1.6; }
-  .popup-success-email { display: inline-block; margin-top: 12px; padding: 8px 16px; background: var(--sky); border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--blue); }
+  .popup-note { font-size: 15px; color: var(--grey); line-height: 1.6; text-align: center; }
+  .popup-note a { color: var(--blue); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+  .popup-note a:hover { color: var(--blue-mid); }
 
   /* PREVIEW POPUPS */
   .preview-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(10,20,6,0.75); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.25s; }
@@ -376,43 +359,13 @@
 <!-- APPLY POPUP -->
 <div class="popup-overlay" id="applyPopup">
   <div class="popup-card">
-    <div id="popupFormWrap">
-      <div class="popup-header">
-        <button class="popup-close" onclick="closePopup()">✕</button>
-        <div class="popup-eyebrow">Sweet Success Fundraising</div>
-        <div class="popup-headline">Let's get you started.</div>
-        <p class="popup-sub">Fill in your info and we'll send you everything you need to launch your campaign.</p>
-      </div>
-      <div class="popup-body">
-        <div class="popup-field">
-          <label class="popup-label">First Name</label>
-          <input class="popup-input" id="pop-firstName" type="text" placeholder="Mark" autocomplete="given-name">
-        </div>
-        <div class="popup-field">
-          <label class="popup-label">Last Name</label>
-          <input class="popup-input" id="pop-lastName" type="text" placeholder="Smith" autocomplete="family-name">
-        </div>
-        <div class="popup-field">
-          <label class="popup-label">Email Address</label>
-          <input class="popup-input" id="pop-email" type="email" placeholder="mark@email.com" autocomplete="email">
-        </div>
-        <div class="popup-field">
-          <label class="popup-label">Phone Number</label>
-          <input class="popup-input" id="pop-phone" type="tel" placeholder="780-555-0123" autocomplete="tel">
-        </div>
-        <button class="btn-popup-submit" id="popSubmitBtn" onclick="handlePopupSubmit()">
-          <span class="popup-btn-text">Apply →</span>
-          <div class="popup-spinner"></div>
-        </button>
-        <p id="popupError" role="alert" style="display:none;color:#c62828;font-size:13px;text-align:center;margin-top:10px;line-height:1.4;"></p>
-        <p class="popup-fine-print">Your information is secure and will never be shared or sold.</p>
-      </div>
+    <div class="popup-header">
+      <button class="popup-close" onclick="closePopup()">✕</button>
+      <div class="popup-eyebrow">Sweet Success Fundraising</div>
+      <div class="popup-headline">Let's get you started.</div>
     </div>
-    <div class="popup-success" id="popupSuccess">
-      <div class="popup-success-icon">🎉</div>
-      <h3>You're in the pipeline!</h3>
-      <p>Check your inbox — we've sent you everything you need to get your campaign started.</p>
-      <div class="popup-success-email" id="popSuccessEmail"></div>
+    <div class="popup-body">
+      <p class="popup-note">Coming soon. Questions? Email <a href="mailto:hello@sweetsuccessfundraising.com">hello@sweetsuccessfundraising.com</a></p>
     </div>
   </div>
 </div>
@@ -1000,8 +953,6 @@
   const CONFIG = {
     CALC_WEBHOOK_URL:  'https://hook.us2.make.com/zyca248lifn3ckumpgd7o6jpx3rtfby7', // Make.com proxy → Attio
     APPLY_WEBHOOK_URL: '', // Make.com Apply popup webhook URL
-    // Apply popup: email via FormSubmit.co (AJAX) + save to Supabase organizers via insert-only RPC.
-    APPLY_EMAIL_URL: 'https://formsubmit.co/ajax/obrien71@gmail.com',
     SUPABASE_URL: 'https://iblzoubevkpurzmimguk.supabase.co',
     SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_9go_CuHlF8IRXINocHZjOg_cEupDKzh', // public key (safe in browser); RLS + insert-only function
     SYF_PAGE_URL: 'start-your-fundraiser.html',
@@ -1072,81 +1023,6 @@
       closeEstimatePreview();
     }
   });
-
-  function validatePopup() {
-    const fields = [
-      { id: 'pop-firstName', check: v => v.trim().length > 0 },
-      { id: 'pop-lastName',  check: v => v.trim().length > 0 },
-      { id: 'pop-email',     check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) },
-      { id: 'pop-phone',     check: v => v.trim().length >= 7 },
-    ];
-    let valid = true;
-    fields.forEach(f => {
-      const el = document.getElementById(f.id);
-      if (!f.check(el.value)) { el.classList.add('invalid'); valid = false; }
-      else el.classList.remove('invalid');
-    });
-    return valid;
-  }
-
-  // Apply popup submit. Rule: show success only after a confirmed submit.
-  // Email (FormSubmit) and DB save (Supabase) run in parallel. The application counts as
-  // received as soon as EITHER is confirmed (FormSubmit can take 30-60s; the email keeps
-  // sending in the background). If both fail, show an honest error.
-  function postJSON(url, body, headers, ms) {
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), ms || 15000);
-    return fetch(url, { method: 'POST', keepalive: true, headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, headers || {}), body: JSON.stringify(body), signal: ctl.signal })
-      .finally(() => clearTimeout(t));
-  }
-
-  async function handlePopupSubmit() {
-    const btn = document.getElementById('popSubmitBtn');
-    const errEl = document.getElementById('popupError');
-    if (btn.disabled) return;
-    errEl.style.display = 'none';
-    if (!validatePopup()) return;
-    btn.disabled = true;
-    btn.classList.add('loading');
-    const data = {
-      firstName: document.getElementById('pop-firstName').value.trim(),
-      lastName:  document.getElementById('pop-lastName').value.trim(),
-      email:     document.getElementById('pop-email').value.trim(),
-      phone:     document.getElementById('pop-phone').value.trim(),
-    };
-    const emailReq = postJSON(CONFIG.APPLY_EMAIL_URL, {
-      _subject: 'New SSF application: ' + data.firstName + ' ' + data.lastName,
-      _template: 'table',
-      name: data.firstName + ' ' + data.lastName,
-      email: data.email,
-      phone: data.phone,
-      source: 'Apply popup - sweetsuccessfundraising.com',
-      submitted_at: new Date().toISOString(),
-    }, null, 90000).then(r => r.ok ? r.json() : Promise.reject(new Error('email HTTP ' + r.status)))
-      .then(j => (j && (j.success === true || j.success === 'true')) ? true : Promise.reject(new Error('email not confirmed')));
-    const dbReq = postJSON(CONFIG.SUPABASE_URL + '/rest/v1/rpc/ssf_apply_popup', {
-      p_first_name: data.firstName, p_last_name: data.lastName, p_email: data.email, p_phone: data.phone,
-    }, { apikey: CONFIG.SUPABASE_PUBLISHABLE_KEY })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error('db HTTP ' + r.status)))
-      .then(j => (j && j.ok === true) ? true : Promise.reject(new Error('db not confirmed')));
-    emailReq.catch(e => console.warn('Apply email failed', e));
-    dbReq.catch(e => console.warn('Apply save failed', e));
-    const received = await new Promise(resolve => {
-      let failed = 0;
-      [emailReq, dbReq].forEach(p => p.then(() => resolve(true), () => { if (++failed === 2) resolve(false); }));
-    });
-    btn.classList.remove('loading');
-    btn.disabled = false;
-    if (received) {
-      document.getElementById('popupFormWrap').style.display = 'none';
-      document.getElementById('popSuccessEmail').textContent = data.email;
-      document.getElementById('popupSuccess').classList.add('visible');
-    } else {
-      errEl.textContent = "Sorry, that didn't go through. Please email obrien71@gmail.com directly.";
-      errEl.style.display = 'block';
-    }
-  }
-  document.querySelectorAll('.popup-input').forEach(el => el.addEventListener('input', () => el.classList.remove('invalid')));
 
   // CALCULATOR
   function calcEstimates(goal, players) {
