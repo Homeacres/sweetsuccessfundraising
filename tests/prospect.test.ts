@@ -18,7 +18,7 @@ import {
 } from "@/lib/email/prospect";
 import { bagEstimate } from "@/lib/estimate";
 import { followUpsStopped } from "@/lib/prospect-run";
-import { replyLocalPart, signOrganizerAction, verifyOrganizerAction } from "@/lib/organizer-token";
+import { signOrganizerAction, verifyOrganizerAction } from "@/lib/organizer-token";
 import { parseInboundEmail, verifyResendWebhook } from "@/lib/resend-inbound";
 import { participantSlug, sharePath } from "@/lib/roster";
 
@@ -55,7 +55,7 @@ describe("prospect copy", () => {
     expect(day2.text).toContain("20 per participant");
 
     expect(prospectDay5Email(fields).subject).toBe("Any questions before you start?");
-    expect(prospectDay5Email(fields).text).not.toContain("Or just reply");
+    expect(prospectDay5Email(fields).text).toContain("Or just reply with any questions.");
     const last = prospectDay10Email(fields);
     expect(last.subject).toBe("Should we close your Hawks estimate?");
     expect(last.text).toContain("We won't email again");
@@ -68,8 +68,8 @@ describe("prospect copy", () => {
     expect(inboundReplyDomain({ INBOUND_REPLY_DOMAIN: "team.example.com" })).toBe("team.example.com");
     expect(DEFAULT_INBOUND_REPLY_DOMAIN).toBe("team.sweetsuccessfundraising.com");
     expect(prospectReplyTo(organizerId, {})).toBeNull();
-    const on = prospectReplyTo(organizerId, { INBOUND_EMAIL_ENABLED: "true", ORGANIZER_ACTION_SECRET: secret });
-    expect(on).toBe(`reply+${replyLocalPart(organizerId, secret)}@team.sweetsuccessfundraising.com`);
+    const on = prospectReplyTo(organizerId, { INBOUND_EMAIL_ENABLED: "true" });
+    expect(on).toBe("hello@team.sweetsuccessfundraising.com");
   });
 });
 
@@ -98,8 +98,10 @@ describe("organizer action links", () => {
     expect(verifyOrganizerAction(start, "unsubscribe", secret)).toBeNull();
     expect(verifyOrganizerAction(unsubscribe, "unsubscribe", secret)?.organizerId).toBe(organizerId);
     expect(verifyOrganizerAction(`${start}x`, "start", secret)).toBeNull();
-    expect(readFileSync("app/o/start/[token]/page.tsx", "utf8")).toContain('type="submit"');
+    expect(readFileSync("components/FlowScreens.tsx", "utf8")).toContain('type="submit"');
+    expect(readFileSync("app/o/start/[token]/page.tsx", "utf8")).not.toContain(".update(");
     expect(readFileSync("app/o/start/[token]/page.tsx", "utf8")).not.toContain("recordOrganizerStart()");
+    expect(readFileSync("app/api/o/start/route.ts", "utf8")).toContain('.is("request_submitted_at", null)');
     expect(readFileSync("lib/organizer-actions.ts", "utf8")).toContain('.is("started_at", null)');
   });
 });

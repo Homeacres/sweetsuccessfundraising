@@ -65,7 +65,7 @@ The app reads environment variables on the server, when a request needs them. `n
 | `APPLY_EMAILS_ENABLED` | Apply emails send when this is `true`, `1`, or `yes` and `RESEND_API_KEY` is set. They also send when `EMAIL_TEST_RECIPIENT` is set. Otherwise nothing is sent. |
 | `EMAIL_TEST_RECIPIENT` | Optional. Every email goes only to this address, with `[TEST to <original>] ` on the subject. `email_log.status` is `redirected`. The logged recipient stays the original address so milestone dedupe still works. |
 | `ADMIN_PASSWORD` | Password for `/admin`. |
-| `CRON_SECRET` | Bearer token for `/api/cron/milestones` and `/api/cron/prospects`. Needed on Preview. |
+| `CRON_SECRET` | Bearer token for the one daily job, `GET /api/cron/daily`. Needed on Preview. |
 | `ORGANIZER_ACTION_SECRET` | HMAC secret for start, unsubscribe, and roster links. Needed on Preview before those emails are sent. |
 | `INBOUND_EMAIL_ENABLED` | Off unless `true`, `1`, or `yes`. Leave off on Preview until DNS for `team.sweetsuccessfundraising.com` is approved. |
 | `INBOUND_REPLY_DOMAIN` | Reply-To host when inbound email is on. Defaults to `team.sweetsuccessfundraising.com`. Not needed on Preview while inbound email is off. |
@@ -95,7 +95,7 @@ On Vercel, add an endpoint `https://<your-domain>/api/webhooks/stripe` for the t
 1. Import the GitHub repo and set the production branch to this branch, not `main`, until DNS cutover.
 2. Framework preset: Next.js. Root directory: the repository root (where `package.json` is). `vercel.json` pins `framework` to `nextjs` and `buildCommand` to `next build`, and it does not set `outputDirectory` (Next writes to `.next`). `package.json` `engines.node` is `22.x`. `.vercelignore` keeps the old `api/*.js` files off the upload so Vercel does not try to build those truncated scripts as functions. `index.html` and `CNAME` stay in git for GitHub Pages; Next serves `app/page.tsx` instead of `index.html`.
 3. Add every variable from `.env.example`. The build does not need them. Requests that talk to Supabase, Stripe, or Resend read them at request time.
-4. `vercel.json` schedules `GET /api/cron/milestones` at `0 16 * * *` (16:00 UTC, once a day). That is 9:00am when Edmonton is UTC−7 and 10:00am when it is UTC−6, so the 9:00 `send_hour_local` has passed either way. Set `CRON_SECRET` in the project; Vercel sends it on cron requests. Hobby plans allow a cron only when it runs at most once a day. This five-field expression matches that rule.
+4. `vercel.json` schedules one job, `GET /api/cron/daily`, at `0 16 * * *` (16:00 UTC, once a day). That run sends parent milestone mail, organizer follow-ups, the pre-launch countdown, the waitlist note, and live-sales mail. It is 9:00am when Edmonton is UTC−7 and 10:00am when it is UTC−6, so the 9:00 `send_hour_local` has passed either way. Set `CRON_SECRET` in the project; Vercel sends it on cron requests. Hobby plans allow a cron only when it runs at most once a day. This five-field expression matches that rule.
 5. Do not point sweetsuccessfundraising.com at this deployment until you mean to replace the GitHub Pages site.
 
 ## Routes
@@ -112,7 +112,7 @@ On Vercel, add an endpoint `https://<your-domain>/api/webhooks/stripe` for the t
 | `POST /api/webhooks/stripe` | `checkout.session.completed` and `charge.refunded` |
 | `/l/{parent_token}` | Parent leaderboard via `fn_parent_leaderboard` |
 | `/unsubscribe/{parent_token}` | Set `families.email_opted_out_at` |
-| `GET /api/cron/milestones` | Due parent emails. Requires `CRON_SECRET`. |
+| `GET /api/cron/daily` | Parent milestone mail, organizer follow-ups, countdown, waitlist note, and live-sales mail. Requires `CRON_SECRET`. |
 | `/admin/login`, `/admin` | Campaign list |
 | `/admin/campaigns/{id}` | Production totals, pick list, print, CSV, delivery, close |
 | `GET /api/admin/campaigns/{id}/pick-list` | CSV download |

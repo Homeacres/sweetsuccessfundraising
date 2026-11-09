@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-export type OrganizerAction = "start" | "unsubscribe" | "roster" | "reply";
+export type OrganizerAction = "start" | "unsubscribe" | "roster" | "reply" | "signup" | "dashboard" | "accept" | "windows" | "pstop";
 
 export function signOrganizerAction(organizerId: string, action: OrganizerAction, secret: string): string {
   const body = `${action}.${organizerId}`;

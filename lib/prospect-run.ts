@@ -24,21 +24,23 @@ export type ProspectOrganizer = {
   repliedAt: string | null;
   unsubscribedAt: string | null;
   declinedAt: string | null;
+  requestSubmittedAt: string | null;
   status: string;
 };
 
 const STEP_TYPES = Object.values(PROSPECT_STEP_EMAIL);
 
-export function followUpsStopped(row: Pick<ProspectOrganizer, "status" | "startedAt" | "repliedAt" | "unsubscribedAt" | "declinedAt">): boolean {
-  return row.status !== "applied" || Boolean(row.startedAt || row.repliedAt || row.unsubscribedAt || row.declinedAt);
+export function followUpsStopped(row: Pick<ProspectOrganizer, "status" | "startedAt" | "repliedAt" | "unsubscribedAt" | "declinedAt"> & { requestSubmittedAt?: string | null }): boolean {
+  return row.status !== "applied" || Boolean(row.startedAt || row.requestSubmittedAt || row.repliedAt || row.unsubscribedAt || row.declinedAt);
 }
 
 export async function sendDueProspectEmails(now = new Date()): Promise<{ checked: number; sent: number; skipped: number; failed: number }> {
   const db = supabaseAdmin();
   const { data, error } = await db
     .from("organizers")
-    .select("organizer_id, first_name, email, organization_name, fundraising_goal_estimate_cad, participant_count_estimate, created_at, started_at, replied_at, unsubscribed_at, declined_at, status")
+    .select("organizer_id, first_name, email, organization_name, fundraising_goal_estimate_cad, participant_count_estimate, created_at, started_at, request_submitted_at, replied_at, unsubscribed_at, declined_at, status")
     .eq("status", "applied")
+    .is("request_submitted_at", null)
     .is("started_at", null)
     .is("replied_at", null)
     .is("unsubscribed_at", null)
@@ -56,6 +58,7 @@ export async function sendDueProspectEmails(now = new Date()): Promise<{ checked
       participants: row.participant_count_estimate,
       createdAt: row.created_at,
       startedAt: row.started_at,
+      requestSubmittedAt: row.request_submitted_at,
       repliedAt: row.replied_at,
       unsubscribedAt: row.unsubscribed_at,
       declinedAt: row.declined_at,

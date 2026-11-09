@@ -4,11 +4,7 @@
   "buildCommand": "next build",
   "crons": [
     {
-      "path": "/api/cron/milestones",
-      "schedule": "0 16 * * *"
-    },
-    {
-      "path": "/api/cron/prospects",
+      "path": "/api/cron/daily",
       "schedule": "0 16 * * *"
     }
   ]

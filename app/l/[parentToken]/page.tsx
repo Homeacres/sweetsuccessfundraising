@@ -1,5 +1,6 @@
-import { formatCad } from "@/lib/money";
 import { supabaseConfigured } from "@/lib/env";
+import { playerDisplayName } from "@/lib/names";
+import { goalPercent, starSellers, type Seller } from "@/lib/standings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Leaderboard", robots: { index: false, follow: false } };
@@ -9,35 +10,45 @@ export default async function LeaderboardPage({ params }: { params: Promise<{ pa
   if (!supabaseConfigured() || parentToken.length < 32) return <Invalid />;
 
   const db = supabaseAdmin();
-  const { data, error } = await db.rpc("fn_parent_leaderboard", { p_token: parentToken });
-  if (error || !data?.length) return <Invalid />;
-
   const { data: me } = await db
     .from("campaign_participants")
-    .select("campaigns(campaign_name, goal_cad, team_raised_cents)")
+    .select("cp_id, campaign_id, campaigns(campaign_name, goal_cad, team_raised_cents)")
     .eq("parent_token", parentToken)
     .maybeSingle();
   const campaign = campaignOf(me?.campaigns);
+  if (!me?.campaign_id || !campaign) return <Invalid />;
+  const { data: people, error } = await db
+    .from("campaign_participants")
+    .select("cp_id, player_first_name, player_last_name, bags_sold, leaderboard_opt_in")
+    .eq("campaign_id", me.campaign_id);
+  if (error || !people) return <Invalid />;
+  const sellers: Seller[] = people.map((person) => ({
+    id: person.cp_id,
+    first: person.player_first_name,
+    last: person.player_last_name,
+    bags: person.bags_sold,
+    optedIn: Boolean(person.leaderboard_opt_in),
+  }));
+  const ranked = sellers.filter((person) => person.optedIn && person.bags > 0).sort((a, b) => b.bags - a.bags);
+  const pct = goalPercent(campaign.team_raised_cents, campaign.goal_cad);
 
   return (
     <main className="page wrap">
       <p className="kicker">Private leaderboard</p>
-      <h1>{campaign?.campaign_name || "Your team"}</h1>
-      {campaign && campaign.goal_cad > 0 && (
-        <p className="muted">Team has earned {formatCad(campaign.team_raised_cents)} of {formatCad(campaign.goal_cad)}.</p>
-      )}
+      <h1>{campaign.campaign_name}</h1>
+      <p className="muted">{pct}% of the goal.</p>
+      <p>{starSellers(sellers).join(", ") || "No star sellers yet."}</p>
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Rank</th><th>Participant</th><th>Bags</th><th>For the team</th></tr>
+            <tr><th>Rank</th><th>Participant</th><th>Bags</th></tr>
           </thead>
           <tbody>
-            {data.map((row: { campaign_rank: number | null; display_name: string; bags_sold: number; team_revenue_cents: number; is_your_player: boolean }, index: number) => (
-              <tr key={`${row.display_name}-${index}`} className={row.is_your_player ? "you" : undefined}>
-                <td>{row.campaign_rank ?? "—"}</td>
-                <td>{row.display_name}{row.is_your_player ? " · yours" : ""}</td>
-                <td>{row.bags_sold}</td>
-                <td>{formatCad(row.team_revenue_cents)}</td>
+            {ranked.map((person, index) => (
+              <tr key={person.id} className={person.id === me.cp_id ? "you" : undefined}>
+                <td>{index + 1}</td>
+                <td>{playerDisplayName(person.first, person.last, true)}{person.id === me.cp_id ? " · yours" : ""}</td>
+                <td>{person.bags}</td>
               </tr>
             ))}
           </tbody>

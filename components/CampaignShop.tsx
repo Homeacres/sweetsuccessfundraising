@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
+import { StartsOn } from "@/components/FlowScreens";
 import { Shop } from "@/components/Shop";
 import { campaignBySlug, playersForSlug, shopCatalog } from "@/lib/catalog";
+import { formatUserDate, todayInEdmonton } from "@/lib/dates";
 import { supabaseConfigured } from "@/lib/env";
+import { shopPhase } from "@/lib/launch";
 
 export async function CampaignShop({ teamSlug, playerSlug }: { teamSlug: string; playerSlug?: string }) {
   if (!supabaseConfigured()) {
@@ -15,6 +18,16 @@ export async function CampaignShop({ teamSlug, playerSlug }: { teamSlug: string;
 
   const campaign = await campaignBySlug(teamSlug);
   if (!campaign?.team_slug) notFound();
+  const phase = shopPhase(campaign.start_date, campaign.end_date, todayInEdmonton());
+  if (phase === "before") return <StartsOn team={campaign.campaign_name} dateLabel={formatUserDate(campaign.start_date)} />;
+  if (phase === "after") {
+    return (
+      <main className="page wrap">
+        <h1>{campaign.campaign_name}</h1>
+        <p>This fundraiser is closed. The whole order is delivered to the organizer.</p>
+      </main>
+    );
+  }
   const players = await playersForSlug(campaign.team_slug);
   const selected = playerSlug ? players.find((player) => player.player_slug === playerSlug) : undefined;
   if (playerSlug && !selected) notFound();

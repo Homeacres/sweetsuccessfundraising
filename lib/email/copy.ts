@@ -1,3 +1,16 @@
+export {
+  alternateWindowEmail,
+  approvedEmail,
+  countdownEmail,
+  finalDaysEmail,
+  launchEmail,
+  midpointEmail,
+  parentInviteEmail,
+  parkedEmail,
+  progressEmail,
+  requestReceivedEmail,
+  wrapUpEmail,
+} from "@/lib/email/flow-copy";
 import { formatUserDate } from "@/lib/dates";
 import { prospectFields, prospectQuoteEmail } from "@/lib/email/prospect";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";

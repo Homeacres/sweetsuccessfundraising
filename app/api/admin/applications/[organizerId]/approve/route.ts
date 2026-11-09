@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { isAdminRequest } from "@/lib/admin-auth";
 import { approveAppliedOrganizer, supabaseApplicationRepo } from "@/lib/applications";
-import { sendRosterDraft } from "@/lib/roster-mail";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +14,5 @@ export async function POST(request: Request, context: { params: Promise<{ organi
     endDate: String(form.get("end_date") || ""),
   });
   if (!result.ok) redirect(`/admin/applications?error=${encodeURIComponent(result.error)}`);
-  try {
-    await sendRosterDraft(organizerId);
-  } catch (error) {
-    console.error("roster link email failed", error instanceof Error ? error.message : "error");
-  }
   redirect(`/admin/campaigns/${result.campaignId}`);
 }

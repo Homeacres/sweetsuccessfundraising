@@ -1,12 +1,12 @@
 import { appUrl } from "@/lib/env";
-import { organizerActionSecret, replyLocalPart, signOrganizerAction } from "@/lib/organizer-token";
+import { organizerActionSecret, signOrganizerAction } from "@/lib/organizer-token";
 import { prospectFields, type ProspectFields } from "@/lib/quote-copy";
 
 export { onPageQuote, prospectFields, formatQuoteGoal, type ProspectFields } from "@/lib/quote-copy";
 
 /** Provisional until Chris replaces it. One place so the sentence is not copied around. */
 export const BAG_ARRIVAL =
-  "We deliver your whole order to you, ready to add your team's personal touch and hand out.";
+  "We deliver your whole order to you, ready for your group's personal touch. Add your own labels, then hand them out.";
 
 export const SIGN_OFF_NAME = "The Sweet Success Family";
 
@@ -26,15 +26,23 @@ export function inboundEmailEnabled(env: Record<string, string | undefined> = pr
   return flag === "true" || flag === "1" || flag === "yes";
 }
 
-/** Reply-To only when the inbound inbox is explicitly on. Otherwise no Reply-To header. */
-export function prospectReplyTo(organizerId: string, env: Record<string, string | undefined> = process.env): string | null {
+/** Shared team inbox. Only when inbound email is on. Otherwise no Reply-To header. */
+export function prospectReplyTo(_organizerId: string, env: Record<string, string | undefined> = process.env): string | null {
   if (!inboundEmailEnabled(env)) return null;
-  const secret = organizerActionSecret(env);
-  if (!secret) return null;
-  return `reply+${replyLocalPart(organizerId, secret)}@${inboundReplyDomain(env)}`;
+  return `hello@${inboundReplyDomain(env)}`;
 }
 
-export function prospectActionUrls(organizerId: string, env: Record<string, string | undefined> = process.env): { startUrl: string; unsubscribeUrl: string; rosterUrl: string } | null {
+export type ProspectLinks = {
+  startUrl: string;
+  unsubscribeUrl: string;
+  rosterUrl: string;
+  signupUrl: string;
+  dashboardUrl: string;
+  windowsUrl: string;
+  acceptUrl: string;
+};
+
+export function prospectActionUrls(organizerId: string, env: Record<string, string | undefined> = process.env): ProspectLinks | null {
   const secret = organizerActionSecret(env);
   if (!secret) return null;
   const origin = appUrl();
@@ -42,6 +50,10 @@ export function prospectActionUrls(organizerId: string, env: Record<string, stri
     startUrl: `${origin}/o/start/${signOrganizerAction(organizerId, "start", secret)}`,
     unsubscribeUrl: `${origin}/o/unsubscribe/${signOrganizerAction(organizerId, "unsubscribe", secret)}`,
     rosterUrl: `${origin}/o/roster/${signOrganizerAction(organizerId, "roster", secret)}`,
+    signupUrl: `${origin}/p/join/${signOrganizerAction(organizerId, "signup", secret)}`,
+    dashboardUrl: `${origin}/o/dashboard/${signOrganizerAction(organizerId, "dashboard", secret)}`,
+    windowsUrl: `${origin}/o/window/${signOrganizerAction(organizerId, "windows", secret)}`,
+    acceptUrl: `${origin}/o/window/${signOrganizerAction(organizerId, "accept", secret)}`,
   };
 }
 
@@ -53,13 +65,12 @@ function button(url: string): string {
   return `<p style="margin:20px 0;"><a href="${escapeHtml(url)}" style="display:inline-block;background:#2D1A4E;color:#F0D875;text-decoration:none;font-weight:700;padding:12px 18px;border-radius:8px;">Start my fundraiser</a></p>`;
 }
 
-function signOff(fields: ProspectFields, replyLine: boolean): { text: string; html: string } {
-  const replyText = replyLine ? "Or just reply with any questions.\n\n" : "";
-  const replyHtml = replyLine ? "<p>Or just reply with any questions.</p>\n" : "";
+function signOff(fields: ProspectFields): { text: string; html: string } {
   return {
-    text: `Start my fundraiser: ${fields.startUrl}\n\n${replyText}Thanks,\n${SIGN_OFF_NAME}\nSweet Success Fundraising\nUnsubscribe: ${fields.unsubscribeUrl}`,
+    text: `Start my fundraiser: ${fields.startUrl}\n\nOr just reply with any questions.\n\nThanks,\n${SIGN_OFF_NAME}\nUnsubscribe: ${fields.unsubscribeUrl}`,
     html: `${button(fields.startUrl)}
-${replyHtml}<p>Thanks,<br>${escapeHtml(SIGN_OFF_NAME)}<br>Sweet Success Fundraising</p>
+<p>Or just reply with any questions.</p>
+<p>Thanks,<br>${escapeHtml(SIGN_OFF_NAME)}</p>
 <p style="font-size:12px;"><a href="${escapeHtml(fields.unsubscribeUrl)}">Unsubscribe</a></p>`,
   };
 }
@@ -99,7 +110,7 @@ Here's your estimate. To raise ${fields.goal}, your group would sell about ${fie
 
 Prices include GST. Single bags only for now.
 
-${signOff(fields, true).text}`;
+${signOff(fields).text}`;
   const html = `<p>Hi ${escapeHtml(fields.firstName)},</p>
 <p>Thanks for reaching out. Good luck to ${escapeHtml(fields.teamName)} this season.</p>
 <p>Here's your estimate. To raise ${escapeHtml(fields.goal)}, your group would sell about ${escapeHtml(fields.bags)} bags, which is about ${escapeHtml(fields.bagsEach)} per participant. Fewer if supporters pick premium.</p>
@@ -108,7 +119,7 @@ ${signOff(fields, true).text}`;
 <li>${PREMIUM_LINE}</li>
 </ul>
 <p>Prices include GST. Single bags only for now.</p>
-${signOff(fields, true).html}`;
+${signOff(fields).html}`;
   const wrapped = wrap(preview, html, text);
   return {
     subject: `Your ${fields.teamName} fundraising estimate`,
@@ -130,7 +141,7 @@ Here's how a fundraiser runs for ${fields.teamName}:
 
 Your estimate is still about ${fields.bags} bags (${fields.bagsEach} per participant) to raise ${fields.goal}.
 
-${signOff(fields, true).text}`;
+${signOff(fields).text}`;
   const html = `<p>Hi ${escapeHtml(fields.firstName)},</p>
 <p>Here's how a fundraiser runs for ${escapeHtml(fields.teamName)}:</p>
 <ol>
@@ -139,7 +150,7 @@ ${signOff(fields, true).text}`;
 <li>${escapeHtml(BAG_ARRIVAL)}</li>
 </ol>
 <p>Your estimate is still about ${escapeHtml(fields.bags)} bags (${escapeHtml(fields.bagsEach)} per participant) to raise ${escapeHtml(fields.goal)}.</p>
-${signOff(fields, true).html}`;
+${signOff(fields).html}`;
   const wrapped = wrap(preview, html, text);
   return {
     subject: `How it works for ${fields.teamName}`,
@@ -157,11 +168,11 @@ If anything's holding you back, whether it's the goal, how many bags, or how sup
 
 All set?
 
-${signOff(fields, false).text}`;
+${signOff(fields).text}`;
   const html = `<p>Hi ${escapeHtml(fields.firstName)},</p>
 <p>If anything's holding you back, whether it's the goal, how many bags, or how supporters order, just reply and ask. We'll answer it.</p>
 <p>All set?</p>
-${signOff(fields, false).html}`;
+${signOff(fields).html}`;
   const wrapped = wrap(preview, html, text);
   return {
     subject: "Any questions before you start?",
@@ -179,11 +190,11 @@ This is our last email about your ${fields.teamName} estimate: about ${fields.ba
 
 If you'd still like to run it, the button's below. If now's not the right time, no worries. We won't email again, and you're welcome back anytime.
 
-${signOff(fields, true).text}`;
+${signOff(fields).text}`;
   const html = `<p>Hi ${escapeHtml(fields.firstName)},</p>
 <p>This is our last email about your ${escapeHtml(fields.teamName)} estimate: about ${escapeHtml(fields.bags)} bags to raise ${escapeHtml(fields.goal)}.</p>
 <p>If you'd still like to run it, the button's below. If now's not the right time, no worries. We won't email again, and you're welcome back anytime.</p>
-${signOff(fields, true).html}`;
+${signOff(fields).html}`;
   const wrapped = wrap(preview, html, text);
   return {
     subject: `Should we close your ${fields.teamName} estimate?`,

@@ -1,4 +1,6 @@
+import { todayInEdmonton } from "@/lib/dates";
 import { appUrl } from "@/lib/env";
+import { shopPhase } from "@/lib/launch";
 import { getStripe } from "@/lib/stripe";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { normalizeCartLines, type IncomingLine } from "@/lib/cart";
@@ -43,13 +45,17 @@ export async function createCheckout(body: unknown): Promise<CheckoutResult> {
   const db = supabaseAdmin();
   const { data: campaign, error: campaignError } = await db
     .from("campaigns")
-    .select("campaign_id, campaign_name, status, team_slug")
+    .select("campaign_id, campaign_name, status, team_slug, start_date, end_date")
     .eq("team_slug", teamSlug)
     .maybeSingle();
   if (campaignError) throw campaignError;
   if (!campaign) return { ok: false, error: "That team fundraiser was not found.", status: 404 };
   if (campaign.status !== "active") {
     return { ok: false, error: "This fundraiser is not taking orders right now.", status: 400 };
+  }
+  const phase = shopPhase(campaign.start_date, campaign.end_date, todayInEdmonton());
+  if (phase === "before" || phase === "after") {
+    return { ok: false, error: phase === "before" ? "This fundraiser has not started." : "This fundraiser is closed.", status: 400 };
   }
 
   const cpIds = [...new Set(normalized.map((line) => line.cpId))];
