@@ -19,7 +19,8 @@ describe("formatUserDate", () => {
       kind: "days_left",
       team: "Hawks",
       parentFirst: "Pat",
-      token: "token",
+      shareLinks: [{ name: "Sam", url: "https://preview.example/s/sharetokensharetokensharetoken" }],
+      unsubscribeToken: "unsubtokenunsubtokenunsubtoken",
       players: [{ first: "Sam", last: "Lee", hideLastName: true, bags: 2, teamCents: 1000 }],
       endDate: "2026-11-15",
     });

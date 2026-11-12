@@ -1,17 +1,19 @@
 import { supabaseConfigured } from "@/lib/env";
+import { isUnguessableToken } from "@/lib/ledger-rules";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Unsubscribe", robots: { index: false, follow: false } };
 
-export default async function UnsubscribePage({ params }: { params: Promise<{ parentToken: string }> }) {
-  const { parentToken } = await params;
-  if (!supabaseConfigured() || parentToken.length < 32) return <Invalid />;
+export default async function UnsubscribePage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  if (!supabaseConfigured() || !isUnguessableToken(token)) return <Invalid />;
 
   const db = supabaseAdmin();
   const { data, error } = await db
-    .from("campaign_participants")
+    .from("families")
     .select("family_id")
-    .eq("parent_token", parentToken)
+    .eq("email_unsub_token", token)
     .maybeSingle();
   if (error || !data) return <Invalid />;
 

@@ -1,3 +1,5 @@
+import { todayInEdmonton } from "@/lib/dates";
+import { cashCountsForProduction, parseRemittanceDeadline, remittanceDeadlineDate } from "@/lib/remittance-deadline";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export type PackLine = {
@@ -29,8 +31,10 @@ function nested<T>(value: T | T[] | null | undefined): T | null {
 /** Paid lines for the organizer, using the sport name and the bundle label. Never the source brand. */
 export async function packLines(campaignId: string): Promise<PackLine[]> {
   const db = supabaseAdmin();
-  const { data: campaign, error: campaignError } = await db.from("campaigns").select("sport").eq("campaign_id", campaignId).maybeSingle();
+  const { data: campaign, error: campaignError } = await db.from("campaigns").select("sport, end_date").eq("campaign_id", campaignId).maybeSingle();
   if (campaignError) throw campaignError;
+  const { data: deadlineRow } = await db.from("platform_config").select("value").eq("key", "remittance_deadline").maybeSingle();
+  const deadline = remittanceDeadlineDate(parseRemittanceDeadline(deadlineRow?.value), campaign?.end_date ?? null);
   const { data: sport } = campaign?.sport
     ? await db.from("sports").select("sport_id").eq("sport_name", campaign.sport).maybeSingle()
     : { data: null };
@@ -41,15 +45,45 @@ export async function packLines(campaignId: string): Promise<PackLine[]> {
     for (const row of themed ?? []) names.set(row.product_id, row.display_name);
   }
 
-  const { data, error } = await db
+  const lineSelect =
+    "order_id, qty, product_id, from_mix_pack, bundle_offers(label), bag_types(code), orders!inner(campaign_id, buyer_name, buyer_email, buyer_phone, created_at, payment_status, payment_method, parent_remittances(paid_at)), campaign_participants!inner(cp_id, player_first_name, player_last_name)";
+  let { data, error } = await db
     .from("order_lines")
-    .select("order_id, qty, product_id, from_mix_pack, bundle_offers(label), bag_types(code), orders!inner(campaign_id, buyer_name, buyer_email, buyer_phone, created_at, payment_status), campaign_participants!inner(cp_id, player_first_name, player_last_name)")
+    .select(lineSelect)
     .eq("orders.campaign_id", campaignId)
     .eq("orders.payment_status", "paid");
+  if (error && /payment_method|parent_remittances|schema cache|does not exist/i.test(error.message)) {
+    const legacy = await db
+      .from("order_lines")
+      .select("order_id, qty, product_id, from_mix_pack, bundle_offers(label), bag_types(code), orders!inner(campaign_id, buyer_name, buyer_email, buyer_phone, created_at, payment_status), campaign_participants!inner(cp_id, player_first_name, player_last_name)")
+      .eq("orders.campaign_id", campaignId)
+      .eq("orders.payment_status", "paid");
+    data = legacy.data as typeof data;
+    error = legacy.error;
+  }
   if (error) throw error;
 
-  return (data ?? []).map((row) => {
-    const order = nested(row.orders) as { buyer_name?: string; buyer_email?: string; buyer_phone?: string | null; created_at?: string } | null;
+  return (data ?? []).flatMap((row) => {
+    const order = nested(row.orders) as {
+      buyer_name?: string;
+      buyer_email?: string;
+      buyer_phone?: string | null;
+      created_at?: string;
+      payment_method?: string | null;
+      parent_remittances?: { paid_at?: string | null } | { paid_at?: string | null }[] | null;
+    } | null;
+    if (order && "payment_method" in order) {
+      const paidAt = nested(order.parent_remittances)?.paid_at ?? null;
+      const remittedOn = paidAt ? todayInEdmonton(new Date(paidAt)) : null;
+      if (!cashCountsForProduction({
+        paymentMethod: order.payment_method ?? null,
+        paymentStatus: "paid",
+        remittedOn,
+        deadline,
+      })) {
+        return [];
+      }
+    }
     const person = nested(row.campaign_participants) as { cp_id?: string; player_first_name?: string; player_last_name?: string } | null;
     const bag = nested(row.bag_types) as { code?: string } | null;
     return {

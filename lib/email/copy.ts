@@ -167,17 +167,19 @@ export type MilestonePlayer = {
   teamCents: number;
 };
 
+const SHAREABLE_MILESTONE = new Set<MilestoneName>(["start", "midpoint", "days_left", "final_day"]);
+
 export function milestoneEmail(input: {
   kind: MilestoneName;
   team: string;
   parentFirst: string;
-  token: string;
+  shareLinks: { name: string; url: string }[];
+  unsubscribeToken: string;
   players: MilestonePlayer[];
   endDate: string | null;
 }): { subject: string; html: string; text: string; unsubscribeUrl: string } {
   const origin = appUrl();
-  const boardUrl = `${origin}/l/${input.token}`;
-  const unsubscribeUrl = `${origin}/unsubscribe/${input.token}`;
+  const unsubscribeUrl = `${origin}/unsubscribe/${input.unsubscribeToken}`;
   const names = input.players.map((player) => playerDisplayName(player.first, player.last, player.hideLastName));
   const who = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   const endLabel = formatUserDate(input.endDate);
@@ -188,22 +190,24 @@ export function milestoneEmail(input: {
     final_day: `Today is the last day for ${input.team}. Orders close tonight.`,
     close: `${input.team} has closed. Thanks for helping ${who} sell. The organizer will hand out the candy after it is delivered.`,
   };
+  const shareLinks = SHAREABLE_MILESTONE.has(input.kind) ? input.shareLinks : [];
+  const shareText = shareLinks.map((link) => `${link.name}: ${link.url}`).join("\n");
   const stats = input.players
     .map(
       (player) =>
         `${playerDisplayName(player.first, player.last, player.hideLastName)}: ${player.bags} bags, ${formatTeamCad(player.teamCents)} for the team`,
     )
     .join("\n");
-  const text = `Hi ${input.parentFirst},\n\n${intro[input.kind]}\n\n${stats}\n\nPrivate leaderboard: ${boardUrl}\n\nYou can stop these updates (order receipts still arrive): ${unsubscribeUrl}`;
+  const text = `Hi ${input.parentFirst},\n\n${intro[input.kind]}${shareText ? `\n\nShare this link:\n${shareText}` : ""}\n\n${stats}\n\nYou can stop these updates (order receipts still arrive): ${unsubscribeUrl}`;
   const html = `<p>Hi ${escapeHtml(input.parentFirst)},</p>
 <p>${escapeHtml(intro[input.kind])}</p>
+${shareLinks.map((link) => `<p><a href="${escapeHtml(link.url)}">Share ${escapeHtml(link.name)}'s link</a></p>`).join("")}
 <ul>${input.players
     .map(
       (player) =>
         `<li>${escapeHtml(playerDisplayName(player.first, player.last, player.hideLastName))}: ${player.bags} bags, ${formatTeamCad(player.teamCents)} for the team</li>`,
     )
     .join("")}</ul>
-<p><a href="${boardUrl}">Open the private leaderboard</a></p>
 <p style="font-size:12px;color:#6B5F7A;">These updates are optional. <a href="${unsubscribeUrl}">Unsubscribe</a>. Order receipts still send.</p>`;
   const wrapped = shell(input.team, html, text);
   return {

@@ -3,8 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import { PrintButton } from "@/components/PrintButton";
 import { isAdminRequest } from "@/lib/admin-auth";
 import { packLines } from "@/lib/pick-list";
+import { appUrl } from "@/lib/env";
+import { canAdminUndoCashReceived } from "@/lib/ledger-rules";
 import { formatUserDate } from "@/lib/dates";
 import { formatCad, formatTeamCad } from "@/lib/money";
+import { parseRemittanceDeadline, remittanceDeadlineDate } from "@/lib/remittance-deadline";
+import { supporterShopPath } from "@/lib/roster";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Close-out", robots: { index: false, follow: false } };
@@ -29,11 +33,11 @@ export default async function CampaignAdminPage({
   searchParams,
 }: {
   params: Promise<{ campaignId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; rotated?: string; undone?: string }>;
 }) {
   if (!(await isAdminRequest())) redirect("/admin/login");
   const { campaignId } = await params;
-  const { error: errorFlag } = await searchParams;
+  const { error: errorFlag, rotated, undone } = await searchParams;
   const db = supabaseAdmin();
 
   const { data: campaign, error } = await db
@@ -81,6 +85,9 @@ export default async function CampaignAdminPage({
       </div>
 
       {errorFlag && <p className="alert error">That action didn't save. Try again.</p>}
+      {rotated ? <p className="alert">Shop link rotated. The old supporter link no longer works.</p> : null}
+      {undone ? <p className="alert">Cash received was undone. The order is cash owed again.</p> : null}
+      <LedgerAdmin campaignId={campaignId} endDate={campaign.end_date} />
 
       <div className="grid-3" style={{ margin: "16px 0" }}>
         <article className="panel"><h3>Team keeps</h3><p>{formatTeamCad(campaign.team_raised_cents)} of {formatTeamCad(campaign.goal_cad)}</p></article>
@@ -170,5 +177,71 @@ export default async function CampaignAdminPage({
         </form>
       )}
     </main>
+  );
+}
+
+async function LedgerAdmin({ campaignId, endDate }: { campaignId: string; endDate: string | null }) {
+  const db = supabaseAdmin();
+  const [peopleRes, cashRes, remitRes, configRes] = await Promise.all([
+    db.from("campaign_participants").select("cp_id, player_first_name, player_last_name, share_token").eq("campaign_id", campaignId).order("registered_at"),
+    db.from("orders").select("order_id, buyer_name, total_cad, payment_status, payment_method, cash_received_at, remittance_id").eq("campaign_id", campaignId).eq("payment_method", "cash"),
+    db.from("parent_remittances").select("remittance_id, amount_cents, status, method").eq("campaign_id", campaignId).eq("status", "pending"),
+    db.from("platform_config").select("value").eq("key", "remittance_deadline").maybeSingle(),
+  ]);
+  const missing = [peopleRes.error, cashRes.error, remitRes.error].find((error) => error && /does not exist|schema cache|share_token|payment_method|parent_remittances/i.test(error.message));
+  if (missing) {
+    return <p className="muted">Parent ledger details appear after the parent ledger migration is applied.</p>;
+  }
+  for (const result of [peopleRes, cashRes, remitRes, configRes]) {
+    if (result.error) throw result.error;
+  }
+  const deadline = remittanceDeadlineDate(parseRemittanceDeadline(configRes.data?.value), endDate);
+  const origin = appUrl();
+  return (
+    <section className="panel no-print" style={{ margin: "16px 0" }}>
+      <h2>Cash and shop links</h2>
+      <p className="muted">Cash must be remitted by {deadline ? formatUserDate(deadline) : "the order cut-off"} to be packed. Change the deadline on the campaigns page.</p>
+      <h3>Supporter links</h3>
+      <ul>
+        {(peopleRes.data ?? []).map((person) => (
+          <li key={person.cp_id}>
+            {person.player_first_name} {person.player_last_name}
+            {person.share_token ? ` · ${origin}${supporterShopPath(person.share_token)}` : ""}
+            <form action={`/api/admin/participants/${person.cp_id}/rotate-share`} method="post">
+              <input type="hidden" name="campaign_id" value={campaignId} />
+              <button className="btn btn-ghost" type="submit">Rotate shop link</button>
+            </form>
+          </li>
+        ))}
+      </ul>
+      <h3>Cash orders not yet in the team order</h3>
+      <ul>
+        {(cashRes.data ?? []).filter((order) => order.payment_status !== "paid").map((order) => (
+          <li key={order.order_id}>
+            {order.buyer_name} · {formatCad(order.total_cad)} · {order.payment_status}
+            {order.cash_received_at ? " · cash received" : " · cash owed"}
+            {canAdminUndoCashReceived({
+              paymentMethod: order.payment_method,
+              paymentStatus: order.payment_status,
+              cashReceived: Boolean(order.cash_received_at),
+              remittanceId: order.remittance_id,
+            }) ? (
+              <form action={`/api/admin/orders/${order.order_id}/undo-cash`} method="post">
+                <input type="hidden" name="campaign_id" value={campaignId} />
+                <button className="btn btn-ghost" type="submit">Undo cash received</button>
+              </form>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {!(cashRes.data ?? []).some((order) => order.payment_status !== "paid") ? <p className="muted">No held cash.</p> : null}
+      <h3>Open remittances</h3>
+      <ul>
+        {(remitRes.data ?? []).map((row) => (
+          <li key={row.remittance_id}>{formatCad(row.amount_cents)} · {row.method} · {row.status}</li>
+        ))}
+      </ul>
+      {!(remitRes.data ?? []).length ? <p className="muted">No open remittance.</p> : null}
+    </section>
   );
 }

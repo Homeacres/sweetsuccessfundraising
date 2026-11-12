@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ProductPhotoView } from "@/components/ProductPhoto";
 import type { ProductPhoto } from "@/components/product-photos";
+import { buyerContactError, type PaymentMethod } from "@/lib/buyer";
 import { mixPackLines, normalizeCartLines } from "@/lib/cart";
 import { formatUserDate } from "@/lib/dates";
 import { formatCad, formatTeamCad } from "@/lib/money";
@@ -54,6 +55,8 @@ export function Shop(props: {
   minBags: number;
   standardBagTypeId: string | null;
   bundles: ShopBundle[];
+  orderTarget?: { kind: "supporter"; shareToken: string; firstName: string } | { kind: "parent"; parentToken: string };
+  notice?: string | null;
 }) {
   const pickerRef = useRef<HTMLDivElement>(null);
   const [playerId, setPlayerId] = useState(props.initialCpId || props.players[0]?.cpId || "");
@@ -64,6 +67,7 @@ export function Shop(props: {
   const [buyerName, setBuyerName] = useState("");
   const [buyerEmail, setBuyerEmail] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(props.orderTarget?.kind === "parent" ? "cash" : "card");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const canOrder = props.status === "active" && props.players.length > 0;
@@ -94,8 +98,16 @@ export function Shop(props: {
   }, [playerId, props.products, props.standardBagTypeId, props.tiers, props.bagRows]);
 
   const showLadder = hasMultiBagTiers(props.tiers);
-  const playersInCart = new Set(lines.map((line) => line.cpId));
   const percent = props.goalCents > 0 ? Math.min(100, Math.round((props.raisedCents / props.goalCents) * 100)) : 0;
+
+  function choosePlayer(cpId: string) {
+    if (cpId === playerId) return;
+    if (lines.length || bundle) {
+      setError("This order is for one participant. Remove the cart to switch.");
+      return;
+    }
+    setPlayerId(cpId);
+  }
 
   function qtyOf(productId: string, bagTypeId: string) {
     return lines.find((line) => line.cpId === playerId && line.productId === productId && line.bagTypeId === bagTypeId)?.qty ?? 0;
@@ -138,8 +150,10 @@ export function Shop(props: {
   async function checkout(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
-    if (!buyerName.trim() || !buyerEmail.trim()) {
-      setError("Name and email are required.");
+    const method: PaymentMethod = props.orderTarget?.kind === "parent" ? "cash" : props.orderTarget ? paymentMethod : "card";
+    const contactError = buyerContactError({ name: buyerName, email: buyerEmail, phone: buyerPhone, method });
+    if (contactError) {
+      setError(contactError);
       document.getElementById("buyer-name")?.focus();
       return;
     }
@@ -149,27 +163,33 @@ export function Shop(props: {
     }
     setPending(true);
     try {
-      const response = await fetch("/api/checkout", {
+      const bundleBody = bundle && bundleOffer
+        ? {
+            offerId: bundle.offerId,
+            cpId: bundle.cpId,
+            picks: bundle.picks.map((pick) => ({
+              productId: pick.productId,
+              bagTypeId: bundleOffer.bagTypeId,
+              qty: pick.qty,
+            })),
+          }
+        : null;
+      const target = props.orderTarget;
+      const endpoint = target?.kind === "supporter" ? "/api/shop/orders" : target?.kind === "parent" ? "/api/ledger/orders" : "/api/checkout";
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           teamSlug: props.teamSlug,
           entryCpId: props.initialCpId,
+          shareToken: target?.kind === "supporter" ? target.shareToken : undefined,
+          parentToken: target?.kind === "parent" ? target.parentToken : undefined,
+          paymentMethod: method,
           buyerName,
           buyerEmail,
           buyerPhone,
           lines,
-          bundle: bundle && bundleOffer
-            ? {
-                offerId: bundle.offerId,
-                cpId: bundle.cpId,
-                picks: bundle.picks.map((pick) => ({
-                  productId: pick.productId,
-                  bagTypeId: bundleOffer.bagTypeId,
-                  qty: pick.qty,
-                })),
-              }
-            : null,
+          bundle: bundleBody,
         }),
       });
       const data = (await response.json()) as { ok?: boolean; url?: string; error?: string };
@@ -189,11 +209,16 @@ export function Shop(props: {
     <div className="page wrap">
       <p className="kicker">Team fundraiser</p>
       <h1>{props.campaignName}</h1>
+      {props.notice ? <div className="alert">{props.notice}</div> : null}
       <p className="sub">
-        Pay online. Candy is delivered in bulk to the organizer — no shipping address.{" "}
+        {props.orderTarget?.kind === "supporter"
+          ? `This order supports ${props.orderTarget.firstName}. Candy is delivered in bulk to the organizer — no shipping address. `
+          : props.orderTarget?.kind === "parent"
+            ? "Enter a cash or paper order for this participant. "
+            : "Pay online. Candy is delivered in bulk to the organizer — no shipping address. "}
         {props.endDate ? `Orders run through ${formatUserDate(props.endDate)}.` : ""}
       </p>
-      {props.goalCents > 0 && (
+      {props.goalCents > 0 && !props.orderTarget && (
         <div style={{ margin: "16px 0 22px" }}>
           <div className="progress" aria-hidden="true"><span style={{ width: `${percent}%` }} /></div>
           <p className="muted">Team has earned {formatTeamCad(props.raisedCents)} of {formatTeamCad(props.goalCents)}</p>
@@ -201,14 +226,20 @@ export function Shop(props: {
       )}
       {props.status !== "active" && <div className="alert error">This fundraiser is not taking orders right now.</div>}
 
-      <h2 style={{ fontSize: 28 }}>Which participant is this for?</h2>
-      <div className="picker" ref={pickerRef}>
-        {props.players.map((player) => (
-          <button key={player.cpId} type="button" aria-pressed={player.cpId === playerId} onClick={() => setPlayerId(player.cpId)}>
-            {player.name}
-          </button>
-        ))}
-      </div>
+      {props.orderTarget ? (
+        <p>{props.orderTarget.kind === "supporter" ? `Supporting ${props.orderTarget.firstName}.` : "This cash order is for your participant."}</p>
+      ) : (
+        <>
+          <h2 style={{ fontSize: 28 }}>Which participant is this for?</h2>
+          <div className="picker" ref={pickerRef}>
+            {props.players.map((player) => (
+              <button key={player.cpId} type="button" aria-pressed={player.cpId === playerId} onClick={() => choosePlayer(player.cpId)}>
+                {player.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {props.players.length === 0 && <p>No participants are listed for this team yet.</p>}
 
       {props.bundles.length > 0 && (
@@ -350,22 +381,20 @@ export function Shop(props: {
                 </div>
               );
             })}
-            {playersInCart.size === 1 && props.players.length > 1 && lines.length > 0 && (
-              <div className="estimate">
-                <strong style={{ fontSize: 18 }}>Add another participant?</strong>
-                <p className="muted">One payment can be split across the team. Pick someone else, then add their bags.</p>
-                <button className="btn btn-ghost" type="button" onClick={() => pickerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })}>
-                  Choose another participant
-                </button>
-              </div>
-            )}
             <p>{displayBags > 0 ? `${displayBags} bags · ${formatCad(displayCents)}` : priced.error}</p>
+            {props.orderTarget?.kind === "supporter" && (
+              <fieldset>
+                <legend>How will you pay?</legend>
+                <label><input type="radio" name="pay" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} /> Card</label>
+                <label><input type="radio" name="pay" checked={paymentMethod === "cash"} onChange={() => setPaymentMethod("cash")} /> Cash</label>
+              </fieldset>
+            )}
 
             <label htmlFor="buyer-name">Your name</label>
             <input id="buyer-name" value={buyerName} onChange={(event) => setBuyerName(event.target.value)} autoComplete="name" required />
-            <label htmlFor="buyer-email">Email</label>
-            <input id="buyer-email" type="email" value={buyerEmail} onChange={(event) => setBuyerEmail(event.target.value)} autoComplete="email" required />
-            <label htmlFor="buyer-phone">Phone <span className="fine">(optional)</span></label>
+            <label htmlFor="buyer-email">Email {props.orderTarget && paymentMethod === "cash" ? <span className="fine">(or phone)</span> : null}</label>
+            <input id="buyer-email" type="email" value={buyerEmail} onChange={(event) => setBuyerEmail(event.target.value)} autoComplete="email" required={!props.orderTarget || paymentMethod === "card"} />
+            <label htmlFor="buyer-phone">Phone {props.orderTarget && paymentMethod === "cash" ? <span className="fine">(or email)</span> : <span className="fine">(optional)</span>}</label>
             <input id="buyer-phone" type="tel" value={buyerPhone} onChange={(event) => setBuyerPhone(event.target.value)} autoComplete="tel" />
             {error && <div className="alert error" role="alert">{error}</div>}
           </div>
@@ -375,7 +404,7 @@ export function Shop(props: {
               <div className="muted" style={{ color: "rgba(255,255,255,0.7)" }}>{displayBags || 0} bags</div>
             </div>
             <button className="btn btn-gold" type="submit" disabled={!canOrder || pending || displayBags === 0}>
-              {pending ? "Starting…" : "Checkout"}
+              {pending ? "Starting…" : props.orderTarget?.kind === "parent" || paymentMethod === "cash" && props.orderTarget ? "Save cash order" : "Checkout"}
             </button>
           </div>
         </form>

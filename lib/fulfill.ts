@@ -3,7 +3,7 @@ import { receiptCandyName } from "@/lib/public-names";
 import { sendEmail, sentLogStatus } from "@/lib/email/send";
 import { playerDisplayName } from "@/lib/names";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import type { PaidOrder, RefundedOrder } from "@/lib/webhook";
+import type { PaidOrder, RefundedOrder, RemittanceUpdate } from "@/lib/webhook";
 
 /**
  * update orders set payment_status='paid'
@@ -49,6 +49,51 @@ export async function markOrderRefunded(paymentIntentId: string): Promise<Refund
   const row = data?.[0];
   if (!row) return null;
   return { orderId: row.order_id, campaignId: row.campaign_id };
+}
+
+export async function markRemittancePaid(sessionId: string, paymentIntentId: string | null): Promise<RemittanceUpdate | null> {
+  const { data, error } = await supabaseAdmin().rpc("fn_mark_remittance_paid", {
+    p_session_id: sessionId,
+    p_payment_intent_id: paymentIntentId,
+  });
+  if (error) throw error;
+  return remittanceUpdate(data);
+}
+
+export async function failRemittance(sessionId: string): Promise<RemittanceUpdate | null> {
+  const { data, error } = await supabaseAdmin().rpc("fn_fail_remittance", { p_session_id: sessionId });
+  if (error) throw error;
+  return remittanceUpdate(data);
+}
+
+/** Refund of the parent's one cash remittance. Card refunds stay on markOrderRefunded. */
+export async function markRemittanceRefunded(paymentIntentId: string): Promise<RefundedOrder | null> {
+  const db = supabaseAdmin();
+  const { data: remittance, error } = await db
+    .from("parent_remittances")
+    .select("remittance_id, campaign_id")
+    .eq("stripe_payment_id", paymentIntentId)
+    .eq("status", "paid")
+    .maybeSingle();
+  if (error) throw error;
+  if (!remittance) return null;
+  const { data: orders, error: orderError } = await db
+    .from("orders")
+    .update({ payment_status: "refunded", updated_at: new Date().toISOString() })
+    .eq("remittance_id", remittance.remittance_id)
+    .eq("payment_status", "paid")
+    .select("order_id, campaign_id");
+  if (orderError) throw orderError;
+  const row = orders?.[0];
+  if (!row) return null;
+  return { orderId: row.order_id, campaignId: row.campaign_id };
+}
+
+function remittanceUpdate(data: unknown): RemittanceUpdate | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as { remittance_id?: string; campaign_id?: string };
+  if (!row.remittance_id || !row.campaign_id) return null;
+  return { remittanceId: row.remittance_id, campaignId: row.campaign_id };
 }
 
 export async function recalcLeaderboard(campaignId: string): Promise<void> {
