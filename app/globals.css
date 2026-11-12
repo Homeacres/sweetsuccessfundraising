@@ -169,28 +169,19 @@ textarea { min-height: 88px; }
 .panel h3 { margin: 0 0 8px; font-size: 26px; }
 .step-no { color: var(--gold-dark); font-family: var(--display); font-size: 28px; }
 
+.how-section { --how-icon: 104px; }
 .how-steps {
   list-style: none;
   margin: 28px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
 }
 .how-step { position: relative; min-width: 0; }
-.how-step:not(:last-child)::after {
-  content: "";
-  position: absolute;
-  left: 43px;
-  bottom: -15px;
-  width: 2px;
-  height: 12px;
-  background: var(--navy);
-  border-radius: 1px;
-}
 .how-hit {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
+  grid-template-columns: var(--how-icon) minmax(0, 1fr);
   grid-template-areas:
     "icon title"
     "icon caption";
@@ -214,11 +205,19 @@ a.how-hit:hover { border-color: var(--navy); }
 }
 .how-icon {
   grid-area: icon;
-  width: 64px;
-  height: 64px;
+  width: var(--how-icon);
+  height: var(--how-icon);
+  border-radius: 50%;
+  background: var(--gold-light);
   color: var(--navy);
+  display: grid;
+  place-items: center;
 }
-.how-icon svg { width: 64px; height: 64px; display: block; }
+.how-icon svg { width: 86%; height: 86%; display: block; overflow: visible; }
+.how-icon svg :not(text) {
+  vector-effect: non-scaling-stroke;
+  stroke-width: 2.5px;
+}
 .how-icon text {
   font-family: var(--font);
   font-weight: 700;
@@ -263,7 +262,35 @@ a.how-hit:hover { border-color: var(--navy); }
   color: var(--navy);
   min-width: 0;
 }
-.how-arrow { display: none; }
+.how-arrow {
+  position: absolute;
+  z-index: 1;
+  left: calc(12px + (var(--how-icon) - 14px) / 2);
+  bottom: -20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 14px;
+  height: 18px;
+  color: var(--navy);
+  pointer-events: none;
+}
+.how-arrow-line {
+  width: 2.5px;
+  flex: 1 1 auto;
+  min-height: 6px;
+  background: currentColor;
+  border-radius: 2px;
+}
+.how-arrow-head {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  display: block;
+  overflow: visible;
+  transform: rotate(90deg);
+  margin-top: -2px;
+}
 .how-actions { margin: 22px 0 0; }
 .panel:has(.product-photo) { overflow: hidden; padding-top: 0; }
 .product-photo { margin: 0 -20px 14px; line-height: 0; }
@@ -334,22 +361,40 @@ th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line
   .hero-grid { grid-template-columns: 1.1fr 0.9fr; align-items: center; }
   .section { padding: 80px 28px; }
   .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .how-section { --how-icon: 112px; }
   .how-steps {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 36px 16px;
+    column-gap: 18px;
+    row-gap: 10px;
     align-items: stretch;
+    margin-top: 40px;
   }
-  .how-step:not(:last-child)::after { content: none; }
+  .how-step {
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-row: span 3;
+  }
   .how-hit {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    height: 100%;
-    padding: 28px 14px 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: none;
+    grid-template-rows: subgrid;
+    grid-row: span 3;
+    align-items: start;
+    height: auto;
+    padding: 26px 12px 16px;
+    row-gap: 8px;
   }
-  .how-titleline { display: block; }
+  .how-icon { grid-area: auto; justify-self: center; }
+  .how-titleline { grid-area: auto; display: block; align-self: start; }
+  .how-titleline h3 {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.1;
+    min-height: 2.2em;
+  }
+  .how-hit > p { grid-area: auto; font-size: 14px; align-self: start; }
   .how-num {
     position: absolute;
     top: -16px;
@@ -360,27 +405,21 @@ th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line
     font-size: 18px;
   }
   .how-arrow {
-    display: block;
-    position: absolute;
-    top: -1px;
+    flex-direction: row;
+    align-items: center;
+    width: calc(100% - 20px);
+    height: 12px;
     left: calc(50% + 22px);
-    width: calc(100% - 28px);
-    height: 2px;
-    background: var(--navy);
+    top: -6px;
+    bottom: auto;
   }
-  .how-arrow::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    top: 50%;
-    width: 8px;
-    height: 8px;
-    border-top: 2px solid var(--navy);
-    border-right: 2px solid var(--navy);
-    transform: translateY(-50%) rotate(45deg);
+  .how-arrow-line {
+    width: auto;
+    height: 2.5px;
+    min-height: 0;
+    flex: 1 1 auto;
   }
-  .how-titleline h3 { margin: 0; font-size: 22px; }
-  .how-hit > p { font-size: 14px; }
+  .how-arrow-head { transform: none; margin: 0 0 0 -1px; }
   .how-actions { margin-top: 28px; }
   .product-photo img { height: 220px; }
   .grid-2 { grid-template-columns: 1fr 1fr; }
