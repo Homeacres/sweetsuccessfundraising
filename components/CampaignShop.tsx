@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { StartsOn } from "@/components/FlowScreens";
 import { Shop } from "@/components/Shop";
-import { campaignBySlug, playersForSlug, shopCatalog } from "@/lib/catalog";
+import { campaignBySlug, playersForSlug, shopBundles, shopCatalog } from "@/lib/catalog";
 import { formatUserDate, todayInEdmonton } from "@/lib/dates";
 import { supabaseConfigured } from "@/lib/env";
 import { shopPhase } from "@/lib/launch";
@@ -31,7 +31,7 @@ export async function CampaignShop({ teamSlug, playerSlug }: { teamSlug: string;
   const players = await playersForSlug(campaign.team_slug);
   const selected = playerSlug ? players.find((player) => player.player_slug === playerSlug) : undefined;
   if (playerSlug && !selected) notFound();
-  const catalog = await shopCatalog(campaign.sport);
+  const [catalog, bundles] = await Promise.all([shopCatalog(campaign.sport), shopBundles()]);
 
   return (
     <Shop
@@ -56,6 +56,14 @@ export async function CampaignShop({ teamSlug, playerSlug }: { teamSlug: string;
       defaultQty={catalog.defaultQty}
       minBags={catalog.minBags}
       standardBagTypeId={catalog.standardBagTypeId}
+      bundles={bundles.map((offer) => ({
+        offerId: offer.offerId,
+        label: offer.label,
+        bagCount: offer.bagCount,
+        bagTypeId: offer.bagTypeId,
+        priceCents: offer.priceCents,
+        isTest: offer.isTest,
+      }))}
     />
   );
 }

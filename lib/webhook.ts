@@ -18,16 +18,27 @@ export type RefundedOrder = {
   campaignId: string;
 };
 
+export type RemittanceUpdate = {
+  remittanceId: string;
+  campaignId: string;
+};
+
 export interface WebhookDeps {
   markPaid(sessionId: string, paymentIntentId: string | null): Promise<PaidOrder | null>;
   markRefunded(paymentIntentId: string): Promise<RefundedOrder | null>;
   sendReceipt(order: PaidOrder): Promise<void>;
   recalc(campaignId: string): Promise<void>;
+  markRemittancePaid?(sessionId: string, paymentIntentId: string | null): Promise<RemittanceUpdate | null>;
+  failRemittance?(sessionId: string): Promise<RemittanceUpdate | null>;
+  markRemittanceRefunded?(paymentIntentId: string): Promise<RefundedOrder | null>;
+  sessionIdForFailedPayment?(paymentIntentId: string): Promise<string | null>;
 }
 
 export type WebhookResult =
   | { action: "paid"; orderId: string }
   | { action: "refunded"; orderId: string }
+  | { action: "remittance_paid"; remittanceId: string }
+  | { action: "remittance_failed"; remittanceId: string }
   | { action: "noop" }
   | { action: "ignored" };
 
@@ -61,10 +72,20 @@ export async function handleStripeEvent(event: StripeLikeEvent, deps: WebhookDep
   if (event.type === "checkout.session.completed") {
     return completeCheckout(event.data.object, deps);
   }
+  if (event.type === "checkout.session.expired" || event.type === "checkout.session.async_payment_failed") {
+    return expireRemittance(event.data.object, deps);
+  }
+  if (event.type === "payment_intent.payment_failed") {
+    return failRemittancePayment(event.data.object, deps);
+  }
   if (event.type === "charge.refunded") {
     return refundCharge(event.data.object, deps);
   }
   return { action: "ignored" };
+}
+
+function metadataOf(record: Record<string, unknown> | null): Record<string, unknown> | null {
+  return asRecord(record?.metadata);
 }
 
 async function completeCheckout(object: unknown, deps: WebhookDeps): Promise<WebhookResult> {
@@ -72,6 +93,10 @@ async function completeCheckout(object: unknown, deps: WebhookDeps): Promise<Web
   if (!session) return { action: "ignored" };
   const sessionId = stripeId(session.id);
   if (!sessionId) return { action: "ignored" };
+
+  if (metadataOf(session)?.kind === "parent_remittance") {
+    return completeRemittance(sessionId, stripeId(session.payment_intent), session.payment_status, deps);
+  }
 
   // Card payments are paid on this event. Async methods complete later.
   if (session.payment_status && session.payment_status !== "paid") {
@@ -103,8 +128,57 @@ async function refundCharge(object: unknown, deps: WebhookDeps): Promise<Webhook
   if (!paymentIntentId) return { action: "ignored" };
 
   const order = await deps.markRefunded(paymentIntentId);
-  if (!order) return { action: "noop" };
+  if (order) {
+    await deps.recalc(order.campaignId);
+    return { action: "refunded", orderId: order.orderId };
+  }
 
-  await deps.recalc(order.campaignId);
-  return { action: "refunded", orderId: order.orderId };
+  if (deps.markRemittanceRefunded) {
+    const remitted = await deps.markRemittanceRefunded(paymentIntentId);
+    if (remitted) {
+      await deps.recalc(remitted.campaignId);
+      return { action: "refunded", orderId: remitted.orderId };
+    }
+  }
+  return { action: "noop" };
+}
+
+async function completeRemittance(
+  sessionId: string,
+  paymentIntentId: string | null,
+  paymentStatus: unknown,
+  deps: WebhookDeps,
+): Promise<WebhookResult> {
+  if (paymentStatus && paymentStatus !== "paid") return { action: "ignored" };
+  if (!deps.markRemittancePaid) return { action: "ignored" };
+  const row = await deps.markRemittancePaid(sessionId, paymentIntentId);
+  if (!row) return { action: "noop" };
+  await deps.recalc(row.campaignId);
+  return { action: "remittance_paid", remittanceId: row.remittanceId };
+}
+
+async function expireRemittance(object: unknown, deps: WebhookDeps): Promise<WebhookResult> {
+  const session = asRecord(object);
+  const sessionId = stripeId(session?.id);
+  if (!sessionId || !deps.failRemittance) return { action: "ignored" };
+  const row = await deps.failRemittance(sessionId);
+  if (!row) return { action: "noop" };
+  return { action: "remittance_failed", remittanceId: row.remittanceId };
+}
+
+async function failRemittancePayment(object: unknown, deps: WebhookDeps): Promise<WebhookResult> {
+  const intent = asRecord(object);
+  if (!intent || !deps.failRemittance) return { action: "ignored" };
+  const metadata = metadataOf(intent);
+  if (metadata?.kind && metadata.kind !== "parent_remittance") return { action: "ignored" };
+  if (metadata?.kind !== "parent_remittance" && !metadata?.checkout_session_id) return { action: "ignored" };
+  let sessionId = typeof metadata?.checkout_session_id === "string" ? metadata.checkout_session_id : null;
+  if (!sessionId && deps.sessionIdForFailedPayment) {
+    const paymentIntentId = stripeId(intent.id);
+    if (paymentIntentId) sessionId = await deps.sessionIdForFailedPayment(paymentIntentId);
+  }
+  if (!sessionId) return { action: "ignored" };
+  const row = await deps.failRemittance(sessionId);
+  if (!row) return { action: "noop" };
+  return { action: "remittance_failed", remittanceId: row.remittanceId };
 }

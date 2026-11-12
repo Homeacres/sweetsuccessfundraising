@@ -1,5 +1,14 @@
-import { markOrderPaid, markOrderRefunded, recalcLeaderboard, sendOrderReceipt } from "@/lib/fulfill";
+import { failRemittance, markOrderPaid, markOrderRefunded, markRemittancePaid, markRemittanceRefunded, recalcLeaderboard, sendOrderReceipt } from "@/lib/fulfill";
 import { getStripe } from "@/lib/stripe";
+
+async function sessionIdForFailedPayment(paymentIntentId: string): Promise<string | null> {
+  const stripe = getStripe();
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  if (intent.metadata?.checkout_session_id) return intent.metadata.checkout_session_id;
+  if (intent.metadata?.kind !== "parent_remittance") return null;
+  const sessions = await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 1 });
+  return sessions.data[0]?.id ?? null;
+}
 import { requiredEnv } from "@/lib/env";
 import { handleStripeEvent } from "@/lib/webhook";
 
@@ -25,6 +34,10 @@ export async function POST(request: Request) {
       markRefunded: markOrderRefunded,
       sendReceipt: sendOrderReceipt,
       recalc: recalcLeaderboard,
+      markRemittancePaid,
+      failRemittance,
+      markRemittanceRefunded,
+      sessionIdForFailedPayment,
     });
     return Response.json({ ok: true, action: result.action });
   } catch (error) {

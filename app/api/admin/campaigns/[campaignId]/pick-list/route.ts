@@ -1,35 +1,38 @@
 import { isAdminRequest } from "@/lib/admin-auth";
 import { toCsv } from "@/lib/csv";
 import { formatUserDate } from "@/lib/dates";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { packLines } from "@/lib/pick-list";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, context: { params: Promise<{ campaignId: string }> }) {
   if (!(await isAdminRequest())) return new Response("Unauthorized", { status: 401 });
   const { campaignId } = await context.params;
-  const { data, error } = await supabaseAdmin()
-    .from("v_organizer_pick_list")
-    .select(
-      "player_last_name, player_first_name, buyer_name, buyer_email, buyer_phone, candy_name, base_candy, bag_type_code, bags, includes_mix_pack, ordered_at",
-    )
-    .eq("campaign_id", campaignId);
-  if (error) return new Response("Could not build the pick list", { status: 500 });
-
-  const rows = [...(data ?? [])].sort(comparePick);
+  let rows;
+  try {
+    rows = await packLines(campaignId);
+  } catch {
+    return new Response("Could not build the pick list", { status: 500 });
+  }
+  rows.sort((a, b) =>
+    a.playerLast.localeCompare(b.playerLast) ||
+    a.playerFirst.localeCompare(b.playerFirst) ||
+    a.buyerName.localeCompare(b.buyerName) ||
+    a.candyName.localeCompare(b.candyName),
+  );
   const csv = toCsv(
-    ["Participant", "Buyer", "Email", "Phone", "Candy", "Brand", "Bag", "Bags", "Mix pack", "Ordered"],
+    ["Participant", "Buyer", "Email", "Phone", "Bundle", "Candy", "Bag", "Bags", "Mix pack", "Ordered"],
     rows.map((row) => [
-      `${row.player_first_name} ${row.player_last_name}`.trim(),
-      row.buyer_name,
-      row.buyer_email,
-      row.buyer_phone,
-      row.candy_name,
-      row.base_candy,
-      row.bag_type_code,
+      `${row.playerFirst} ${row.playerLast}`.trim(),
+      row.buyerName,
+      row.buyerEmail,
+      row.buyerPhone,
+      row.bundleLabel,
+      row.candyName,
+      row.bagCode,
       row.bags,
-      row.includes_mix_pack ? "yes" : "no",
-      formatUserDate(row.ordered_at) || row.ordered_at,
+      row.mix ? "yes" : "no",
+      formatUserDate(row.orderedAt) || row.orderedAt,
     ]),
   );
 
@@ -39,16 +42,4 @@ export async function GET(_request: Request, context: { params: Promise<{ campai
       "Content-Disposition": `attachment; filename="pick-list-${campaignId}.csv"`,
     },
   });
-}
-
-function comparePick(
-  a: { player_last_name: string; player_first_name: string; buyer_name: string; candy_name: string },
-  b: { player_last_name: string; player_first_name: string; buyer_name: string; candy_name: string },
-) {
-  return (
-    a.player_last_name.localeCompare(b.player_last_name) ||
-    a.player_first_name.localeCompare(b.player_first_name) ||
-    (a.buyer_name || "").localeCompare(b.buyer_name || "") ||
-    (a.candy_name || "").localeCompare(b.candy_name || "")
-  );
 }
