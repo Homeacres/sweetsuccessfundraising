@@ -1,4 +1,5 @@
 import { ApplyForm } from "@/components/ApplyForm";
+import { HowItWorks } from "@/components/HowItWorks";
 import { ProductPhotoView } from "@/components/ProductPhoto";
 import { bearsPhoto, fruitChewsPhoto, spheresPhoto } from "@/components/product-photos";
 import { sportListUnavailable, type SportChoice } from "@/lib/apply-sport";
@@ -51,31 +52,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="section alt" id="how">
-        <div className="wrap">
-          <p className="kicker">The process</p>
-          <h2>Up and running fast</h2>
-          <p className="sub">From the first quote to the first sale. We handle the shop. You hand out the order.</p>
-          <p>{TEAM_KEEP_ABOUT}</p>
-          <div className="grid-3" style={{ marginTop: 28 }}>
-            <article className="panel">
-              <div className="step-no">01</div>
-              <h3>Calculate your fundraiser</h3>
-              <p>Tell us about your group. The estimate stays on this page. No paperwork.</p>
-            </article>
-            <article className="panel">
-              <div className="step-no">02</div>
-              <h3>Share your link</h3>
-              <p>Each participant gets a link to text. Buyers can split one order across several participants.</p>
-            </article>
-            <article className="panel">
-              <div className="step-no">03</div>
-              <h3>We deliver, you hand out</h3>
-              <p>Buyers pay by card. We produce the candy and deliver it in bulk to the organizer.</p>
-            </article>
-          </div>
-        </div>
-      </section>
+      <HowItWorks />
 
       <section className="section" id="products">
         <div className="wrap">
