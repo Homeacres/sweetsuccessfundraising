@@ -351,7 +351,13 @@ export function Shop(props: {
         <form onSubmit={checkout}>
           <div className="panel">
             <h2 style={{ fontSize: 28, marginTop: 0 }}>Cart</h2>
-            {!bundle && lines.length === 0 && <p className="muted">Choose a participant and add bags. The first tap starts at {props.defaultQty}.</p>}
+            {!bundle && lines.length === 0 && (
+              <p className="muted">
+                {props.orderTarget?.kind === "supporter"
+                  ? `Supporting ${props.orderTarget.firstName}.`
+                  : `Choose a participant and add bags. The first tap starts at ${props.defaultQty}.`}
+              </p>
+            )}
             {bundleOffer && bundle && (
               <div className="cart-line">
                 <div>
@@ -383,11 +389,26 @@ export function Shop(props: {
             })}
             <p>{displayBags > 0 ? `${displayBags} bags · ${formatCad(displayCents)}` : priced.error}</p>
             {props.orderTarget?.kind === "supporter" && (
-              <fieldset>
-                <legend>How will you pay?</legend>
-                <label><input type="radio" name="pay" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} /> Card</label>
-                <label><input type="radio" name="pay" checked={paymentMethod === "cash"} onChange={() => setPaymentMethod("cash")} /> Cash</label>
-              </fieldset>
+              <div className="pay-choice" role="radiogroup" aria-label="How will you pay?">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === "card"}
+                  className={paymentMethod === "card" ? "pay-option is-selected" : "pay-option"}
+                  onClick={() => setPaymentMethod("card")}
+                >
+                  Pay by card now
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={paymentMethod === "cash"}
+                  className={paymentMethod === "cash" ? "pay-option is-selected" : "pay-option"}
+                  onClick={() => setPaymentMethod("cash")}
+                >
+                  Pay cash to {props.orderTarget.firstName}&apos;s parent
+                </button>
+              </div>
             )}
 
             <label htmlFor="buyer-name">Your name</label>
