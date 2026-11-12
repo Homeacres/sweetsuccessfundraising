@@ -63,7 +63,11 @@ describe("emails 12 to 15", () => {
     expect(wrap.subject).toBe("Thank you from Hawks!");
     expect(under.text).toContain("Questions? Email hello@sweetsuccessfundraising.com.");
     expect(under.html).toContain('href="mailto:hello@sweetsuccessfundraising.com"');
-    expect(readFileSync("app/page.tsx", "utf8")).toContain("Up and running fast");
+    expect(readFileSync("components/HowItWorks.tsx", "utf8")).toContain("export const SHOW_HOW_IT_WORKS_CTA = false");
+    expect(readFileSync("components/HowItWorks.tsx", "utf8")).toContain("How Sweet Success works");
+    expect(readFileSync("components/HowItWorks.tsx", "utf8")).toContain("Five easy steps from first idea to money raised.");
+    expect(readFileSync("app/page.tsx", "utf8")).toContain("<HowItWorks />");
+    expect(readFileSync("app/page.tsx", "utf8")).not.toContain("Up and running fast");
     expect(readFileSync("app/page.tsx", "utf8")).not.toContain("48 hours");
     expect(under.text).toContain("The Sweet Success Family");
   });
