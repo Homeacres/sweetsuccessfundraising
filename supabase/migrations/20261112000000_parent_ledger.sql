@@ -187,7 +187,7 @@ update public.orders o
        entered_by = coalesce(o.entered_by, 'supporter'),
        payment_method = coalesce(o.payment_method, 'card')
   from (
-    select ol.order_id, min(ol.cp_id) as cp_id
+    select ol.order_id, (min(ol.cp_id::text))::uuid as cp_id
       from public.order_lines ol
      group by ol.order_id
     having count(distinct ol.cp_id) = 1
