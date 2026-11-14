@@ -248,7 +248,7 @@ function boardLine(order: LedgerOrder, mode: ReturnType<typeof leaderboardCashMo
 function orderStatus(order: LedgerOrder): { label: string; tone: string } {
   if (order.payment_status === "failed") return { label: "Cancelled", tone: "cancelled" };
   if (order.payment_status === "refunded") return { label: "Refunded", tone: "cancelled" };
-  if (order.payment_method === "cash" && order.paid_to_ssf) return { label: "Paid to Sweet Success", tone: "ssf" };
+  if (order.payment_method === "cash" && order.paid_to_ssf) return { label: "Sent in by parent", tone: "ssf" };
   if (order.ledger_payment_status === "card_paid") return { label: "Paid by card", tone: "card" };
   if (order.ledger_payment_status === "cash_received") return { label: "Cash received", tone: "received" };
   if (order.ledger_payment_status === "cash_owed") return { label: "Cash owed", tone: "owed" };

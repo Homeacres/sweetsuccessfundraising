@@ -16,7 +16,7 @@ export default async function RemitSuccessPage({ params }: { params: Promise<{ p
     <main className="page wrap">
       <p className="kicker">Sweet Success</p>
       <h1>Payment sent</h1>
-      <p>If the card payment went through, those cash orders stay marked cash received and also show paid to Sweet Success. It can take a moment to confirm.</p>
+      <p>If the card payment went through, those cash orders stay marked cash received and the ledger shows sent in by parent. It can take a moment to confirm.</p>
       <p><a href={`/p/ledger/${parentToken}`}>Back to the ledger</a></p>
     </main>
   );
