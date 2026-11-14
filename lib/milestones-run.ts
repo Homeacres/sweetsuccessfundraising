@@ -1,5 +1,9 @@
 import { milestoneEmail, type MilestonePlayer } from "@/lib/email/copy";
 import { sendEmail, sentLogStatus } from "@/lib/email/send";
+import { appUrl } from "@/lib/env";
+import { isUnguessableToken } from "@/lib/ledger-rules";
+import { playerDisplayName } from "@/lib/names";
+import { supporterShopPath } from "@/lib/roster";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
   dueMilestones,
@@ -13,13 +17,14 @@ type FamilyRow = {
   parent_email: string;
   parent_first_name: string;
   email_opted_out_at: string | null;
+  email_unsub_token: string | null;
 };
 
 type PlayerRow = {
   player_first_name: string;
   player_last_name: string;
   hide_last_name: boolean;
-  parent_token: string;
+  share_token: string | null;
   bags_sold: number;
   team_revenue_cents: number;
   registered_at: string;
@@ -68,7 +73,8 @@ export async function sendDueMilestoneEmails(onlyCampaignId?: string): Promise<M
           kind,
           email: group.email,
           parentFirst: group.parentFirst,
-          token: group.token,
+          shareLinks: group.shareLinks,
+          unsubscribeToken: group.unsubscribeToken,
           players: group.players,
         });
         if (outcome === "sent") result.sent += 1;
@@ -86,14 +92,15 @@ async function parentGroups(campaignId: string): Promise<
     email: string;
     parentFirst: string;
     optedOut: boolean;
-    token: string;
+    unsubscribeToken: string;
+    shareLinks: { name: string; url: string }[];
     players: MilestonePlayer[];
   }[]
 > {
   const { data, error } = await supabaseAdmin()
     .from("campaign_participants")
     .select(
-      "player_first_name, player_last_name, hide_last_name, parent_token, bags_sold, team_revenue_cents, registered_at, family_id, families(parent_email, parent_first_name, email_opted_out_at, family_id)",
+      "player_first_name, player_last_name, hide_last_name, share_token, bags_sold, team_revenue_cents, registered_at, family_id, families(parent_email, parent_first_name, email_opted_out_at, family_id, email_unsub_token)",
     )
     .eq("campaign_id", campaignId)
     .order("registered_at");
@@ -101,11 +108,18 @@ async function parentGroups(campaignId: string): Promise<
 
   const groups = new Map<
     string,
-    { email: string; parentFirst: string; optedOut: boolean; token: string; players: MilestonePlayer[] }
+    {
+      email: string;
+      parentFirst: string;
+      optedOut: boolean;
+      unsubscribeToken: string;
+      shareLinks: { name: string; url: string }[];
+      players: MilestonePlayer[];
+    }
   >();
   for (const row of (data ?? []) as PlayerRow[]) {
     const family = Array.isArray(row.families) ? row.families[0] : row.families;
-    if (!family) continue;
+    if (!family || !isUnguessableToken(family.email_unsub_token)) continue;
     const existing = groups.get(row.family_id);
     const player: MilestonePlayer = {
       first: row.player_first_name,
@@ -114,16 +128,24 @@ async function parentGroups(campaignId: string): Promise<
       bags: row.bags_sold,
       teamCents: row.team_revenue_cents,
     };
+    const shareLink = isUnguessableToken(row.share_token)
+      ? {
+          name: playerDisplayName(row.player_first_name, row.player_last_name, row.hide_last_name),
+          url: `${appUrl()}${supporterShopPath(row.share_token)}`,
+        }
+      : null;
     if (!existing) {
       groups.set(row.family_id, {
         email: (family.parent_email || "").toLowerCase(),
         parentFirst: family.parent_first_name,
         optedOut: Boolean(family.email_opted_out_at),
-        token: row.parent_token,
+        unsubscribeToken: family.email_unsub_token,
+        shareLinks: shareLink ? [shareLink] : [],
         players: [player],
       });
     } else {
       existing.players.push(player);
+      if (shareLink) existing.shareLinks.push(shareLink);
     }
   }
   return [...groups.values()];
@@ -136,7 +158,8 @@ async function claimAndSend(input: {
   kind: MilestoneName;
   email: string;
   parentFirst: string;
-  token: string;
+  shareLinks: { name: string; url: string }[];
+  unsubscribeToken: string;
   players: MilestonePlayer[];
 }): Promise<"sent" | "skipped" | "failed"> {
   const db = supabaseAdmin();
@@ -163,7 +186,8 @@ async function claimAndSend(input: {
       kind: input.kind,
       team: input.team,
       parentFirst: input.parentFirst,
-      token: input.token,
+      shareLinks: input.shareLinks,
+      unsubscribeToken: input.unsubscribeToken,
       players: input.players,
       endDate: input.endDate,
     });

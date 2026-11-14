@@ -14,7 +14,8 @@ import { appUrl } from "@/lib/env";
 import { sendFlowEmail, sendParked } from "@/lib/flow-mail";
 import { countdownKind, daysUntil, liveMailKind, shopPhase, waitlistDue, type LiveMailKind } from "@/lib/launch";
 import { formatCad } from "@/lib/money";
-import { sharePath } from "@/lib/roster";
+import { isUnguessableToken } from "@/lib/ledger-rules";
+import { supporterShopPath } from "@/lib/roster";
 import { starSellers, goalPercent, type Seller } from "@/lib/standings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -25,8 +26,15 @@ type Participant = {
   bags_sold: number;
   leaderboard_opt_in: boolean | null;
   player_slug: string;
-  parent_token: string;
-  families: { parent_email: string; parent_first_name: string; email_opted_out_at: string | null } | { parent_email: string; parent_first_name: string; email_opted_out_at: string | null }[] | null;
+  share_token: string | null;
+  families: FamilyMail | FamilyMail[] | null;
+};
+
+type FamilyMail = {
+  parent_email: string;
+  parent_first_name: string;
+  email_opted_out_at: string | null;
+  email_unsub_token?: string | null;
 };
 
 export async function sendDueFlowEmails(now = new Date()): Promise<{ countdown: number; waitlist: number; live: number }> {
@@ -131,7 +139,7 @@ async function sendLiveSales(today: string): Promise<number> {
     if (!kind) continue;
     const { data: people, error: peopleError } = await db
       .from("campaign_participants")
-      .select("cp_id, player_first_name, player_last_name, bags_sold, leaderboard_opt_in, player_slug, parent_token, families(parent_email, parent_first_name, email_opted_out_at)")
+      .select("cp_id, player_first_name, player_last_name, bags_sold, leaderboard_opt_in, player_slug, share_token, families(parent_email, parent_first_name, email_opted_out_at, email_unsub_token)")
       .eq("campaign_id", campaign.campaign_id);
     if (peopleError) throw peopleError;
     const sellers = ((people ?? []) as Participant[]).map((person) => ({
@@ -145,7 +153,7 @@ async function sendLiveSales(today: string): Promise<number> {
     const overall = starSellers(sellers);
     const { data: org } = await db.from("organizers").select("first_name, email, unsubscribed_at").eq("organizer_id", campaign.organizer_id).maybeSingle();
     const links = prospectActionUrls(campaign.organizer_id);
-    const recipients = recipientsFor(campaign.team_slug, (people ?? []) as Participant[], org, links?.dashboardUrl ?? null, links?.unsubscribeUrl ?? null);
+    const recipients = recipientsFor((people ?? []) as Participant[], org, links?.dashboardUrl ?? null, links?.unsubscribeUrl ?? null);
     const type = emailTypeFor(kind, today);
     const shared = {
       teamName: campaign.campaign_name,
@@ -193,8 +201,7 @@ type Recipient = {
   unsubscribeUrl: string;
 };
 
-function recipientsFor(
-  teamSlug: string,
+export function recipientsFor(
   people: Participant[],
   org: { first_name: string; email: string; unsubscribed_at: string | null } | null,
   dashboardUrl: string | null,
@@ -205,18 +212,21 @@ function recipientsFor(
     const family = familyOf(person.families);
     if (!family?.parent_email) continue;
     const email = family.parent_email.toLowerCase();
+    const unsub = family.email_unsub_token;
     const current = byEmail.get(email) ?? {
       email,
       firstName: family.parent_first_name || "there",
       dashboardUrl: null,
       supporterLinks: [],
-      unsubscribeUrl: `${appUrl()}/unsubscribe/${person.parent_token}`,
+      unsubscribeUrl: isUnguessableToken(unsub) ? `${appUrl()}/unsubscribe/${unsub}` : "",
       optedOut: Boolean(family.email_opted_out_at),
     };
-    current.supporterLinks.push({
-      name: `${person.player_first_name} ${String(person.player_last_name || "").slice(0, 1)}`.trim(),
-      url: `${appUrl()}${sharePath(teamSlug, person.player_slug)}`,
-    });
+    if (isUnguessableToken(person.share_token)) {
+      current.supporterLinks.push({
+        name: `${person.player_first_name} ${String(person.player_last_name || "").slice(0, 1)}`.trim(),
+        url: `${appUrl()}${supporterShopPath(person.share_token)}`,
+      });
+    }
     if (family.email_opted_out_at) current.optedOut = true;
     byEmail.set(email, current);
   }
@@ -237,6 +247,7 @@ function recipientsFor(
     const supporterLinks = row.optedOut ? [] : row.supporterLinks;
     const dashboard = row.dashboardUrl;
     if (!dashboard && supporterLinks.length === 0) return [];
+    if (supporterLinks.length && !row.unsubscribeUrl) return [];
     const unsubscribeUrl = supporterLinks.length ? row.unsubscribeUrl : (organizerUnsubscribe || row.unsubscribeUrl);
     return [{ email: row.email, firstName: row.firstName, dashboardUrl: dashboard, supporterLinks, unsubscribeUrl }];
   });

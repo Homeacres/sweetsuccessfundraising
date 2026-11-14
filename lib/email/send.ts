@@ -55,7 +55,19 @@ export function sentLogStatus(env: Record<string, string | undefined> = process.
  * Envelope for Resend. When EMAIL_TEST_RECIPIENT is set, the message goes only
  * to that address. The original address is not copied to to, cc, or bcc.
  */
+const PREVIEW_INBOX = "delivered@resend.dev";
+
+/** Preview mail goes only to the Resend test inbox. */
+export function assertPreviewInbox(env: Record<string, string | undefined> = process.env): void {
+  if (env.VERCEL_ENV !== "preview") return;
+  const test = env.EMAIL_TEST_RECIPIENT?.trim().toLowerCase();
+  if (test !== PREVIEW_INBOX) {
+    throw new Error("Preview mail can only go to delivered@resend.dev");
+  }
+}
+
 export function resendBody(message: OutboundEmail, env: Record<string, string | undefined> = process.env): ResendBody {
+  assertPreviewInbox(env);
   assertNoPersonalGmail(message, env);
   const test = env.EMAIL_TEST_RECIPIENT?.trim();
   const to = test || message.to;

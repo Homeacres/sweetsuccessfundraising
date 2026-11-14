@@ -1,4 +1,5 @@
 import { productPhotoForSort, type ProductPhoto } from "@/components/product-photos";
+import { visibleBundleOffers, type BundleOffer } from "@/lib/bundles";
 import { applySportOptions, OTHER_SPORT, type SportCatalogRow } from "@/lib/apply-sport";
 import { jsonbInt } from "@/lib/money";
 import { publicCatalogProduct, type PublicProduct } from "@/lib/public-names";
@@ -201,4 +202,25 @@ export async function shopCatalog(sportName: string): Promise<ShopCatalog> {
     minBags: jsonbInt(config.get("order_min_bags"), 1),
     standardBagTypeId: bags.find((bag) => bag.code === "standard")?.bagTypeId ?? null,
   };
+}
+
+export async function shopBundles(): Promise<BundleOffer[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("bundle_offers")
+    .select("offer_id, label, description, bag_count, bag_type_id, price_cents, team_share_cents, is_active, is_test, sort_order")
+    .order("sort_order");
+  if (error) throw error;
+  const offers: BundleOffer[] = (data ?? []).map((row) => ({
+    offerId: row.offer_id,
+    label: row.label,
+    description: row.description,
+    bagCount: row.bag_count,
+    bagTypeId: row.bag_type_id,
+    priceCents: row.price_cents,
+    teamShareCents: row.team_share_cents,
+    isActive: row.is_active,
+    isTest: row.is_test,
+    sortOrder: row.sort_order,
+  }));
+  return visibleBundleOffers(offers);
 }

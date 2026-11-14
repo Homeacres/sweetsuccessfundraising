@@ -5,10 +5,10 @@ import { useState } from "react";
 export function CopyLink({ href, label }: { href: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="qty-line">
+    <div className="copy-link">
       <div>
         <strong>{label}</strong>
-        <div className="muted">{href}</div>
+        <div className="muted copy-url">{href}</div>
       </div>
       <button
         className="btn btn-ghost"

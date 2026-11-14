@@ -4,7 +4,7 @@ import { appUrl, supabaseConfigured } from "@/lib/env";
 import { shopPhase } from "@/lib/launch";
 import { formatQuoteGoal } from "@/lib/email/prospect";
 import { organizerActionSecret, verifyOrganizerAction } from "@/lib/organizer-token";
-import { sharePath } from "@/lib/roster";
+import { supporterShopPath } from "@/lib/roster";
 import { loadStarLines } from "@/lib/flow-run";
 import { goalPercent, type Seller } from "@/lib/standings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -20,7 +20,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ toke
   const { data: campaignRows } = await db.from("campaigns").select("campaign_id, campaign_name, team_slug, goal_cad, team_raised_cents, start_date, end_date").eq("organizer_id", parsed.organizerId).order("created_at", { ascending: true }).limit(1);
   const campaign = campaignRows?.[0];
   if (!campaign?.team_slug) return <main className="page wrap"><h1>Not approved yet</h1><p>The fundraiser is still in review.</p></main>;
-  const { data: people } = await db.from("campaign_participants").select("cp_id, player_first_name, player_last_name, bags_sold, player_slug, leaderboard_opt_in").eq("campaign_id", campaign.campaign_id);
+  const { data: people } = await db.from("campaign_participants").select("cp_id, player_first_name, player_last_name, bags_sold, share_token, leaderboard_opt_in").eq("campaign_id", campaign.campaign_id);
   const sellers: Seller[] = (people ?? []).map((person) => ({
     id: person.cp_id,
     first: person.player_first_name,
@@ -43,7 +43,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ toke
       overallStars={stars.overall}
       roster={(people ?? []).map((person) => ({
         name: `${person.player_first_name} ${String(person.player_last_name || "").slice(0, 1)}`,
-        href: `${appUrl()}${sharePath(campaign.team_slug, person.player_slug)}`,
+        href: person.share_token ? `${appUrl()}${supporterShopPath(person.share_token)}` : "",
       }))}
     />
   );
