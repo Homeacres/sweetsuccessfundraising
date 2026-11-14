@@ -3,7 +3,7 @@ import { Shop } from "@/components/Shop";
 import { shopBundles, shopCatalog } from "@/lib/catalog";
 import { formatUserDate, todayInEdmonton } from "@/lib/dates";
 import { appUrl, supabaseConfigured } from "@/lib/env";
-import { countsOnLeaderboard, isUnguessableToken, leaderboardCashMode, ledgerNote } from "@/lib/ledger-rules";
+import { countsOnLeaderboard, isUnguessableToken, leaderboardCashMode } from "@/lib/ledger-rules";
 import { formatCad } from "@/lib/money";
 import { describeRemittanceDeadline, parseRemittanceDeadline, remittanceDeadlineDate } from "@/lib/remittance-deadline";
 import { supporterShopPath } from "@/lib/roster";
@@ -91,7 +91,7 @@ export default async function LedgerPage({
   const origin = appUrl();
 
   return (
-    <main className="page wrap">
+    <main className="page wrap ledger">
       <p className="kicker">Parent ledger</p>
       <h1>{ledger.player_first_name}</h1>
       <p className="muted">{campaign?.campaign_name}. Only you and Sweet Success can see these orders.</p>
@@ -99,8 +99,8 @@ export default async function LedgerPage({
       <p><a href={`/l/${parentToken}`}>Private leaderboard</a></p>
       {shareToken ? <CopyLink label="Link to share with supporters" href={`${origin}${supporterShopPath(shareToken)}`} /> : null}
 
-      <div className="grid-3" style={{ margin: "16px 0" }}>
-        <article className="panel"><h3>Paid by card</h3><p>{formatCad(ledger.card_paid_cents || 0)}</p></article>
+      <div className="ledger-totals">
+        <article className="panel"><h3>Card paid</h3><p>{formatCad(ledger.card_paid_cents || 0)}</p></article>
         <article className="panel"><h3>Cash owed</h3><p>{formatCad(ledger.cash_owed_cents || 0)}</p></article>
         <article className="panel"><h3>Cash collected</h3><p>{formatCad(ledger.cash_collected_cents || 0)}</p></article>
         <article className="panel"><h3>Due to Sweet Success</h3><p>{formatCad(ledger.cash_due_to_ssf_cents || 0)}</p></article>
@@ -113,73 +113,69 @@ export default async function LedgerPage({
       {ledger.cash_due_to_ssf_cents > 0 ? (
         <form action="/api/ledger/remit" method="post">
           <input type="hidden" name="token" value={parentToken} />
-          <button className="btn btn-navy" type="submit">Pay {formatCad(ledger.cash_due_to_ssf_cents)} to Sweet Success</button>
+          <button className="btn btn-navy ledger-pay" type="submit">Pay Sweet Success · {formatCad(ledger.cash_due_to_ssf_cents)}</button>
         </form>
       ) : null}
 
-      <section style={{ marginTop: 20 }}>
+      <section className="ledger-orders">
         <h2>Orders</h2>
-        {orders.map((order) => {
-          const note = ledgerNote({
-            paymentStatus: order.payment_status,
-            paymentMethod: order.payment_method,
-            cashReceived: Boolean(order.cash_received_at),
-          });
-          const onBoard = countsOnLeaderboard({
-            paymentStatus: order.payment_status,
-            paymentMethod: order.payment_method,
-            cashReceived: Boolean(order.cash_received_at),
-            bags: order.total_bags,
-          }, mode);
-          return (
-            <article className="panel" key={order.order_id} style={{ marginBottom: 12 }}>
+        {!orders.length ? <p className="muted">No orders yet.</p> : null}
+        <div className="ledger-cards">
+          {orders.map((order) => (
+            <article className="panel" key={order.order_id}>
               <h3>{order.buyer_name}</h3>
-              <p className="muted">
-                {order.entered_by === "parent" ? "Entered by you" : "Entered by a supporter"}
-                {" · "}
-                {statusLabel(order)}
-                {" · "}
-                {formatCad(order.total_cad)}
-                {" · "}
-                {formatUserDate(order.created_at)}
-              </p>
-              <p className="muted">{[order.buyer_email, order.buyer_phone].filter(Boolean).join(" · ")}</p>
-              <ul>
-                {(order.line_items ?? []).map((line, index) => (
-                  <li key={`${order.order_id}-${index}`}>
-                    {line.bundle_label ? `${line.bundle_label}: ` : ""}{line.display_name || "Freeze-dried candy"} × {line.qty ?? 0}
-                  </li>
-                ))}
-              </ul>
+              <p className="muted">{contactLine(order)}</p>
+              <p className="muted">{order.entered_by === "parent" ? "Entered by you" : "Entered by a supporter"}</p>
+              <StatusPill order={order} />
+              <p>{order.total_bags} bag{order.total_bags === 1 ? "" : "s"} · {itemSummary(order)}</p>
+              <p><strong>{formatCad(order.total_cad)}</strong> · {paidBy(order)} · {formatUserDate(order.created_at)}</p>
               {order.cash_received_at ? (
                 <p>Cash received {formatCad(order.cash_received_cents || order.total_cad)} on {formatUserDate(order.cash_received_at)} by {order.cash_received_by}.</p>
               ) : null}
-              {note ? <p><strong>{note}</strong></p> : null}
-              <p className="muted">{onBoard ? "Counts on the leaderboard." : "Not on the leaderboard until it is paid to Sweet Success."}</p>
-              {order.ledger_payment_status === "cash_owed" ? (
-                <div>
-                  <form action="/api/ledger/cash-received" method="post">
-                    <input type="hidden" name="token" value={parentToken} />
-                    <input type="hidden" name="order_id" value={order.order_id} />
-                    <input type="hidden" name="amount_cents" value={order.total_cad} />
-                    <label htmlFor={`by-${order.order_id}`}>Collected by</label>
-                    <input id={`by-${order.order_id}`} name="collected_by" defaultValue={parentName} />
-                    <button className="btn btn-navy" type="submit">Cash received</button>
-                  </form>
-                  <form action="/api/ledger/cancel" method="post">
-                    <input type="hidden" name="token" value={parentToken} />
-                    <input type="hidden" name="order_id" value={order.order_id} />
-                    <button className="btn btn-ghost" type="submit">Cancel this cash order</button>
-                  </form>
-                </div>
-              ) : null}
-              {order.cash_receipt_token ? (
-                <CopyLink label="Cash receipt" href={`${origin}/r/${order.cash_receipt_token}`} />
-              ) : null}
+              <p className="muted">{boardLine(order, mode)}</p>
+              <OrderActions order={order} parentToken={parentToken} parentName={parentName} origin={origin} idPrefix="card" />
             </article>
-          );
-        })}
-        {!orders.length ? <p className="muted">No orders yet.</p> : null}
+          ))}
+        </div>
+        <div className="ledger-table-wrap">
+          <table className="ledger-table">
+            <thead>
+              <tr>
+                <th>Supporter</th>
+                <th>Bags</th>
+                <th>Amount</th>
+                <th>Paid by</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.order_id}>
+                  <td>
+                    <strong>{order.buyer_name}</strong>
+                    <div className="muted">{contactLine(order) || "—"}</div>
+                    <div className="muted">{order.entered_by === "parent" ? "Entered by you" : "Entered by a supporter"}</div>
+                  </td>
+                  <td>
+                    <strong>{order.total_bags}</strong>
+                    <div>{itemSummary(order)}</div>
+                  </td>
+                  <td>{formatCad(order.total_cad)}</td>
+                  <td>{paidBy(order)}</td>
+                  <td>
+                    <StatusPill order={order} />
+                    {order.cash_received_by ? <div className="muted">Collected by {order.cash_received_by}</div> : null}
+                    <div className="muted">{boardLine(order, mode)}</div>
+                  </td>
+                  <td>{formatUserDate(order.created_at)}</td>
+                  <td><OrderActions order={order} parentToken={parentToken} parentName={parentName} origin={origin} idPrefix="table" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {catalog && campaign ? (
@@ -223,14 +219,85 @@ export default async function LedgerPage({
   );
 }
 
-function statusLabel(order: LedgerOrder): string {
-  if (order.payment_status === "refunded") return "Refunded";
-  if (order.payment_status === "failed") return "Cancelled";
-  if (order.ledger_payment_status === "card_paid") return "Paid by card";
-  if (order.ledger_payment_status === "cash_received") return "Cash received";
-  if (order.ledger_payment_status === "cash_owed") return "Cash owed";
-  if (order.payment_method === "card") return "Card checkout open";
-  return "Pending";
+function paidBy(order: LedgerOrder): string {
+  return order.payment_method === "cash" ? "Cash" : "Card";
+}
+
+function contactLine(order: LedgerOrder): string {
+  return [order.buyer_email, order.buyer_phone].filter(Boolean).join(" · ");
+}
+
+function itemSummary(order: LedgerOrder): string {
+  const items = order.line_items ?? [];
+  if (!items.length) return "No items listed";
+  return items
+    .map((line) => `${line.bundle_label ? `${line.bundle_label}: ` : ""}${line.display_name || "Freeze-dried candy"} × ${line.qty ?? 0}`)
+    .join(", ");
+}
+
+function boardLine(order: LedgerOrder, mode: ReturnType<typeof leaderboardCashMode>): string {
+  const onBoard = countsOnLeaderboard({
+    paymentStatus: order.payment_status,
+    paymentMethod: order.payment_method,
+    cashReceived: Boolean(order.cash_received_at),
+    bags: order.total_bags,
+  }, mode);
+  return onBoard ? "On the leaderboard" : "Not on the leaderboard yet";
+}
+
+function orderStatus(order: LedgerOrder): { label: string; tone: string } {
+  if (order.payment_status === "failed") return { label: "Cancelled", tone: "cancelled" };
+  if (order.payment_status === "refunded") return { label: "Refunded", tone: "cancelled" };
+  if (order.payment_method === "cash" && order.paid_to_ssf) return { label: "Paid to Sweet Success", tone: "ssf" };
+  if (order.ledger_payment_status === "card_paid") return { label: "Paid by card", tone: "card" };
+  if (order.ledger_payment_status === "cash_received") return { label: "Cash received", tone: "received" };
+  if (order.ledger_payment_status === "cash_owed") return { label: "Cash owed", tone: "owed" };
+  if (order.payment_method === "card") return { label: "Card checkout open", tone: "open" };
+  return { label: "Pending", tone: "open" };
+}
+
+function StatusPill({ order }: { order: LedgerOrder }) {
+  const status = orderStatus(order);
+  return <span className={`pill pill-${status.tone}`}>{status.label}</span>;
+}
+
+function OrderActions({
+  order,
+  parentToken,
+  parentName,
+  origin,
+  idPrefix,
+}: {
+  order: LedgerOrder;
+  parentToken: string;
+  parentName: string;
+  origin: string;
+  idPrefix: string;
+}) {
+  return (
+    <div className="ledger-actions">
+      {order.ledger_payment_status === "cash_owed" ? (
+        <>
+          <form action="/api/ledger/cash-received" method="post">
+            <input type="hidden" name="token" value={parentToken} />
+            <input type="hidden" name="order_id" value={order.order_id} />
+            <input type="hidden" name="amount_cents" value={order.total_cad} />
+            <label htmlFor={`${idPrefix}-by-${order.order_id}`}>Collected by</label>
+            <input id={`${idPrefix}-by-${order.order_id}`} name="collected_by" defaultValue={parentName} />
+            <button className="btn btn-navy" type="submit">Mark cash received</button>
+          </form>
+          <form action="/api/ledger/cancel" method="post">
+            <input type="hidden" name="token" value={parentToken} />
+            <input type="hidden" name="order_id" value={order.order_id} />
+            <button className="btn btn-ghost" type="submit">Cancel</button>
+          </form>
+        </>
+      ) : null}
+      {order.cash_receipt_token ? (
+        <a className="btn btn-ghost" href={`${origin}/r/${order.cash_receipt_token}`}>Receipt</a>
+      ) : null}
+    </div>
+  );
 }
 
 function Missing() {
