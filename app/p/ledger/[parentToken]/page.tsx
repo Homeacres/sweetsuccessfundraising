@@ -224,7 +224,7 @@ function paidBy(order: LedgerOrder): string {
 }
 
 function contactLine(order: LedgerOrder): string {
-  return [order.buyer_email, order.buyer_phone].filter(Boolean).join(" · ");
+  return [order.buyer_email, order.buyer_phone].filter(Boolean).join(" · ").replaceAll("@", "@\u200b");
 }
 
 function itemSummary(order: LedgerOrder): string {
