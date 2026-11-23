@@ -5,6 +5,7 @@ import { splitBundleCents } from "@/lib/bundles";
 import { todayInEdmonton } from "@/lib/dates";
 import { appUrl } from "@/lib/env";
 import { isUnguessableToken } from "@/lib/ledger-rules";
+import { creditParticipant } from "@/lib/supporter-choice";
 import { shopPhase } from "@/lib/launch";
 import { rowIsTest } from "@/lib/live-sale";
 import { getStripe } from "@/lib/stripe";
@@ -127,6 +128,17 @@ export async function createShareOrder(body: unknown): Promise<CheckoutResult> {
   if (!shop.cp_id || !shop.campaign_id) return { ok: false, error: "Link not valid.", status: 404 };
   const closed = sellingError(shop.status || "", shop.start_date ?? null, shop.end_date ?? null);
   if (closed) return { ok: false, error: closed, status: 400 };
+  const { data: roster, error: rosterError } = await db
+    .from("campaign_participants")
+    .select("cp_id")
+    .eq("campaign_id", shop.campaign_id);
+  if (rosterError) throw rosterError;
+  const credit = creditParticipant({
+    requestedId: parsed.participantId,
+    linkParticipantId: shop.cp_id,
+    sameTeamIds: (roster ?? []).map((row) => row.cp_id),
+  });
+  if (!credit.ok) return { ok: false, error: credit.error, status: 400 };
 
   return finishOrder({
     campaign: {
@@ -143,7 +155,7 @@ export async function createShareOrder(body: unknown): Promise<CheckoutResult> {
     incomingBundle: parsed.incomingBundle,
     enteredBy: "supporter",
     paymentMethod: parsed.paymentMethod,
-    forceCpId: shop.cp_id,
+    forceCpId: credit.cpId,
     successPath: parsed.paymentMethod === "cash" ? `/s/${parsed.shareToken}?placed=cash` : "/checkout/success?session_id={CHECKOUT_SESSION_ID}",
     cancelPath: `/s/${parsed.shareToken}`,
   });
@@ -217,6 +229,7 @@ function parseSaleBody(body: unknown):
       buyerEmail: string;
       buyerPhone: string;
       paymentMethod: PaymentMethod;
+      participantId: string;
       normalized: ReturnType<typeof normalizeCartLines>;
       incomingBundle: IncomingBundle | null;
     } {
@@ -243,6 +256,7 @@ function parseSaleBody(body: unknown):
     buyerEmail: cleanText(raw.buyerEmail, 254).toLowerCase(),
     buyerPhone: cleanText(raw.buyerPhone, 40),
     paymentMethod: method,
+    participantId: cleanText(raw.participantId, 80),
     normalized,
     incomingBundle,
   };

@@ -18,7 +18,7 @@ import {
   type TierRow,
 } from "@/lib/pricing";
 
-type Player = { cpId: string; name: string };
+type Player = { cpId: string; name: string; firstName?: string };
 type Product = {
   productId: string;
   displayName: string | null;
@@ -68,6 +68,7 @@ export function Shop(props: {
   const [buyerEmail, setBuyerEmail] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(props.orderTarget?.kind === "parent" ? "cash" : "card");
+  const [playersOpen, setPlayersOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const canOrder = props.status === "active" && props.players.length > 0;
@@ -99,6 +100,16 @@ export function Shop(props: {
 
   const showLadder = hasMultiBagTiers(props.tiers);
   const percent = props.goalCents > 0 ? Math.min(100, Math.round((props.raisedCents / props.goalCents) * 100)) : 0;
+
+  const selectedPlayer = props.players.find((player) => player.cpId === playerId);
+  const supportedFirstName = selectedPlayer?.firstName || (props.orderTarget?.kind === "supporter" ? props.orderTarget.firstName : selectedPlayer?.name || "");
+
+  function selectSupporter(cpId: string) {
+    setPlayerId(cpId);
+    setLines((current) => current.map((line) => ({ ...line, cpId })));
+    setBundle((current) => (current ? { ...current, cpId } : null));
+    setPlayersOpen(false);
+  }
 
   function choosePlayer(cpId: string) {
     if (cpId === playerId) return;
@@ -183,6 +194,7 @@ export function Shop(props: {
           teamSlug: props.teamSlug,
           entryCpId: props.initialCpId,
           shareToken: target?.kind === "supporter" ? target.shareToken : undefined,
+          participantId: target?.kind === "supporter" ? playerId : undefined,
           parentToken: target?.kind === "parent" ? target.parentToken : undefined,
           paymentMethod: method,
           buyerName,
@@ -226,8 +238,26 @@ export function Shop(props: {
       )}
       {props.status !== "active" && <div className="alert error">This fundraiser is not taking orders right now.</div>}
 
-      {props.orderTarget ? (
-        <p>{props.orderTarget.kind === "supporter" ? `Supporting ${props.orderTarget.firstName}.` : "This cash order is for your participant."}</p>
+      {props.orderTarget?.kind === "supporter" ? (
+        <div className="support-switch">
+          <p>Supporting {supportedFirstName}.</p>
+          <button type="button" aria-expanded={playersOpen} aria-controls="support-players" onClick={() => setPlayersOpen((open) => !open)}>
+            Support a different player
+          </button>
+          {playersOpen ? (
+            <ul id="support-players" role="listbox" aria-label="Players on this team">
+              {props.players.map((player) => (
+                <li key={player.cpId}>
+                  <button type="button" role="option" aria-selected={player.cpId === playerId} onClick={() => selectSupporter(player.cpId)}>
+                    {player.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : props.orderTarget ? (
+        <p>This cash order is for your participant.</p>
       ) : (
         <>
           <h2 style={{ fontSize: 28 }}>Which participant is this for?</h2>
@@ -354,7 +384,7 @@ export function Shop(props: {
             {!bundle && lines.length === 0 && (
               <p className="muted">
                 {props.orderTarget?.kind === "supporter"
-                  ? `Supporting ${props.orderTarget.firstName}.`
+                  ? `Supporting ${supportedFirstName}.`
                   : `Choose a participant and add bags. The first tap starts at ${props.defaultQty}.`}
               </p>
             )}
@@ -406,7 +436,7 @@ export function Shop(props: {
                   className={paymentMethod === "cash" ? "pay-option is-selected" : "pay-option"}
                   onClick={() => setPaymentMethod("cash")}
                 >
-                  Pay cash to {props.orderTarget.firstName}&apos;s parent
+                  Pay cash to {supportedFirstName}&apos;s parent
                 </button>
               </div>
             )}

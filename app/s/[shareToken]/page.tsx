@@ -2,6 +2,7 @@ import { Shop } from "@/components/Shop";
 import { shopBundles, shopCatalog } from "@/lib/catalog";
 import { supabaseConfigured } from "@/lib/env";
 import { isUnguessableToken, supporterIdentity } from "@/lib/ledger-rules";
+import { orderSupporterChoices, supporterPlayerLabels } from "@/lib/supporter-choice";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -22,14 +23,28 @@ export default async function ShareShopPage({
   const { data, error } = await db.rpc("fn_shop_from_share_token", { p_token: shareToken });
   if (error || !data || typeof data !== "object") return <Missing />;
   const shop = data as {
+    cp_id?: string;
     campaign_id?: string;
     player_first_name?: string;
     campaign_name?: string;
     status?: string;
     end_date?: string | null;
   };
-  if (!shop.campaign_id) return <Missing />;
+  if (!shop.campaign_id || !shop.cp_id) return <Missing />;
   const identity = supporterIdentity(shop);
+  const { data: roster, error: rosterError } = await db
+    .from("campaign_participants")
+    .select("cp_id, player_first_name, player_last_name")
+    .eq("campaign_id", shop.campaign_id);
+  if (rosterError) throw rosterError;
+  const teammates = orderSupporterChoices(
+    supporterPlayerLabels((roster ?? []).map((person) => ({
+      id: person.cp_id,
+      first: person.player_first_name,
+      last: person.player_last_name,
+    }))),
+    shop.cp_id,
+  );
   const { data: campaign } = await db.from("campaigns").select("sport").eq("campaign_id", shop.campaign_id).maybeSingle();
   const [catalog, bundles] = await Promise.all([shopCatalog(campaign?.sport || ""), shopBundles()]);
   const notice = query.placed === "cash" ? "Cash order saved. Pay the parent, and they will mark it received." : null;
@@ -42,8 +57,8 @@ export default async function ShareShopPage({
       goalCents={0}
       raisedCents={0}
       endDate={shop.end_date ?? null}
-      players={[{ cpId: "supporter", name: identity.playerFirstName }]}
-      initialCpId="supporter"
+      players={teammates.map((person) => ({ cpId: person.id, name: person.label, firstName: person.firstName }))}
+      initialCpId={shop.cp_id}
       products={catalog.products}
       bags={catalog.bags.map((bag) => ({
         bagTypeId: bag.bagTypeId,
