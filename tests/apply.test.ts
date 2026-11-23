@@ -88,7 +88,8 @@ describe("sport dropdown", () => {
     expect(SPORT_LIST_ERROR).toBe("We couldn't load the sport list. Please refresh or email us.");
     expect(form).toContain("{SPORT_LIST_ERROR}");
     expect(form).toContain("disabled={pending || sportsError}");
-    expect(form).toContain('role="alert"');
+    expect(form).toContain('role="status"');
+    expect(form.match(/role="alert"/g)).toHaveLength(1);
     expect(page).toContain('console.error("sport list failed');
     expect(page).toContain("sportsError");
     expect(apply).toContain("error: SPORT_LIST_ERROR");

@@ -19,7 +19,7 @@
 }
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 84px; }
 html { max-width: 100%; overflow-x: clip; }
 body {
   margin: 0;
@@ -107,7 +107,7 @@ button, input, select, textarea { font-family: inherit; font-size: 16px; }
   color: var(--navy); border-radius: 16px; padding: 18px;
   box-shadow: 0 10px 40px rgba(201,168,76,0.28);
 }
-#apply { scroll-margin-top: 84px; }
+#apply, #how, #products, #about, .area-alert, .btn, a[href^="#"] { scroll-margin-top: 84px; }
 .card h2 { margin: 0 0 4px; font-size: 28px; }
 .card .hint, .fine { color: rgba(45,26,78,0.72); font-size: 13px; }
 label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; margin: 12px 0 6px; }

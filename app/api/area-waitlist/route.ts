@@ -3,7 +3,7 @@ import { loadPostalAreas } from "@/lib/postal-areas";
 import { allowRequest, requestRateKey } from "@/lib/rate-limit";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { cleanText } from "@/lib/text";
-import { WAITLIST_CONSENT } from "@/lib/waitlist-copy";
+import { IMPLIED_WAITLIST_CONSENT } from "@/lib/waitlist-copy";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       email: plan.email,
       country: plan.country,
       postal_prefix: plan.prefix,
-      consent_text: WAITLIST_CONSENT,
+      consent_text: IMPLIED_WAITLIST_CONSENT,
     });
     if (error && error.code !== "23505") throw error;
   }

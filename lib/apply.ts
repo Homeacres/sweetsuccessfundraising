@@ -1,12 +1,14 @@
-import { formatPostal, matchPostalArea, tallyPrefix } from "@/lib/area";
+import { formatPostal, matchPostalArea } from "@/lib/area";
+import { sendEmail } from "@/lib/email/send";
+import { saveOutOfAreaInterest } from "@/lib/out-of-area-mail";
 import { loadPostalAreas } from "@/lib/postal-areas";
+import { formatServedCode, IMPLIED_WAITLIST_CONSENT } from "@/lib/waitlist-copy";
 import { prospectActionUrls, prospectReplyTo } from "@/lib/email/prospect";
 import { applyEmailsWillSend, deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
 import { parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable } from "@/lib/apply-sport";
 import { bagEstimate, type BagEstimate } from "@/lib/estimate";
 import { dollarsToCents } from "@/lib/money";
 import { listSports } from "@/lib/catalog";
-import { sendEmail } from "@/lib/email/send";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { cleanText, isEmail } from "@/lib/text";
 
@@ -28,7 +30,7 @@ export type ApplyInput = {
 };
 
 export type ApplyResult =
-  | { ok: true; already?: boolean; outOfArea?: boolean; emailed: boolean; summary: BagEstimate | null; startUrl: string | null; notices?: ApplyNotice[] }
+  | { ok: true; already?: boolean; outOfArea?: boolean; servedCode?: string; emailed: boolean; summary: BagEstimate | null; startUrl: string | null; notices?: ApplyNotice[] }
   | { ok: false; error?: string; outOfArea?: boolean; status: number };
 
 /** A retry of the same estimate inside this window reuses the saved row and does not send another quote. */
@@ -109,15 +111,42 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
   const area = matchPostalArea(input.postal, areas);
   if (!area.ok) {
     if (area.reason === "invalid") return { ok: false, error: "Enter a Canadian postal code.", status: 400 };
-    const tally = tallyPrefix(input.postal, areas);
-    if (tally) {
-      const { error: tallyError } = await db.rpc("increment_rejected_area_tally", {
-        p_country: tally.country,
-        p_prefix: tally.prefix,
-      });
-      if (tallyError) throw tallyError;
-    }
-    return { ok: false, outOfArea: true, status: 400 };
+    const saved = await saveOutOfAreaInterest({
+      email: input.email,
+      postal: input.postal,
+      areas,
+      origin: undefined,
+      find: async (email, country, prefix) => {
+        const { data, error } = await db
+          .from("area_waitlist")
+          .select("unsub_token, unsubscribed_at")
+          .eq("email", email)
+          .eq("country", country)
+          .eq("postal_prefix", prefix)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data?.unsub_token) return null;
+        return { token: data.unsub_token, unsubscribedAt: data.unsubscribed_at };
+      },
+      insert: async (row) => {
+        const { data, error } = await db.from("area_waitlist").insert({
+          email: row.email,
+          country: row.country,
+          postal_prefix: row.prefix,
+          consent_text: IMPLIED_WAITLIST_CONSENT,
+        }).select("unsub_token, unsubscribed_at").single();
+        if (error) throw error;
+        return { token: data.unsub_token, unsubscribedAt: data.unsubscribed_at };
+      },
+      tally: async (country, prefix) => {
+        const { error } = await db.rpc("increment_rejected_area_tally", { p_country: country, p_prefix: prefix });
+        if (error) throw error;
+      },
+      send: async (message) => {
+        await sendEmail(message);
+      },
+    });
+    return { ok: true, outOfArea: true, servedCode: formatServedCode(input.postal), emailed: saved.emailed, summary: null, startUrl: null };
   }
 
   const { data: existing, error: existingError } = await db

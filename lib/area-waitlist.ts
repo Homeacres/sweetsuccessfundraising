@@ -1,5 +1,5 @@
 import { matchPostalArea, tallyPrefix, type PostalArea } from "@/lib/area";
-import { WAITLIST_CONSENT } from "@/lib/waitlist-copy";
+import { IMPLIED_WAITLIST_CONSENT } from "@/lib/waitlist-copy";
 import { isEmail } from "@/lib/text";
 
 export type WaitlistExisting = {
@@ -29,7 +29,7 @@ export function planWaitlistJoin(input: {
   const area = matchPostalArea(input.postal, input.areas);
   if (!tally || area.ok) return { action: "reject" };
   if (input.existing) return { action: "keep" };
-  return { action: "insert", email, country: tally.country, prefix: tally.prefix, consentText: WAITLIST_CONSENT };
+  return { action: "insert", email, country: tally.country, prefix: tally.prefix, consentText: IMPLIED_WAITLIST_CONSENT };
 }
 
 export function unsubscribeOnPost(current: string | null, now: string): { unsubscribedAt: string; changed: boolean } {

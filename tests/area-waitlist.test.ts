@@ -1,16 +1,17 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { tallyPrefix, type PostalArea } from "@/lib/area";
-import { planWaitlistJoin, unsubscribeOnPost } from "@/lib/area-waitlist";
-import { allowRequest, resetRateLimit } from "@/lib/rate-limit";
-import { waitlistUnsubscribeHeaders } from "@/lib/waitlist-headers";
+import { unsubscribeOnPost } from "@/lib/area-waitlist";
+import { escapeHtml, outOfAreaMessage, saveOutOfAreaInterest } from "@/lib/out-of-area-mail";
+import { resendBody } from "@/lib/email/send";
+import { silenceRouteAnnouncer } from "@/components/SilenceAnnouncer";
 import {
+  IMPLIED_WAITLIST_CONSENT,
   WAITLIST_BODY,
-  WAITLIST_CONSENT,
-  WAITLIST_HEADING,
-  WAITLIST_OPTIONAL,
-  WAITLIST_SENDER,
+  WAITLIST_RESULT_NOTE,
+  formatServedCode,
   postalFieldHint,
+  waitlistHeadline,
 } from "@/lib/waitlist-copy";
 
 const areas: PostalArea[] = [
@@ -18,102 +19,180 @@ const areas: PostalArea[] = [
   { prefix: "T0M", country: "CA", isActive: false },
 ];
 
-describe("out-of-area waitlist", () => {
-  it("accepts a T code with no tally key", () => {
+const origin = "https://preview.example";
+
+function memory() {
+  const rows: { email: string; country: "CA" | "US"; prefix: string; consentText: string; token: string; unsubscribedAt: string | null }[] = [];
+  const sent: { to: string; subject: string; text: string; html: string; headers: Record<string, string> }[] = [];
+  let tallies = 0;
+  return {
+    rows,
+    sent,
+    get tallies() { return tallies; },
+    async find(email: string, country: "CA" | "US", prefix: string) {
+      const row = rows.find((item) => item.email === email && item.country === country && item.prefix === prefix);
+      return row ? { token: row.token, unsubscribedAt: row.unsubscribedAt } : null;
+    },
+    async insert(row: { email: string; country: "CA" | "US"; prefix: string; consentText: string }) {
+      if (rows.some((item) => item.email === row.email && item.country === row.country && item.prefix === row.prefix)) {
+        throw Object.assign(new Error("duplicate"), { code: "23505" });
+      }
+      const saved = { ...row, token: "a".repeat(64), unsubscribedAt: null };
+      rows.push(saved);
+      return { token: saved.token, unsubscribedAt: null };
+    },
+    async tally() { tallies += 1; },
+    async send(message: { to: string; subject: string; text: string; html: string; headers: Record<string, string> }) { sent.push(message); },
+  };
+}
+
+describe("out-of-area intake", () => {
+  it("accepts a T code with no waitlist, tally, or out-of-area email", async () => {
     expect(tallyPrefix("T2P 1J9", areas)).toBeNull();
+    const store = memory();
+    const result = await saveOutOfAreaInterest({
+      email: "pat@example.com",
+      postal: "T2P 1J9",
+      areas,
+      find: store.find,
+      insert: store.insert,
+      tally: store.tally,
+      send: store.send,
+      origin,
+    });
+    expect(result.emailed).toBe(false);
+    expect(store.rows).toEqual([]);
+    expect(store.tallies).toBe(0);
+    expect(store.sent).toEqual([]);
     const apply = readFileSync("lib/apply.ts", "utf8");
-    const tally = apply.indexOf("increment_rejected_area_tally");
-    const insert = apply.indexOf('from("organizers").insert');
-    expect(tally).toBeGreaterThan(-1);
-    expect(insert).toBeGreaterThan(tally);
     expect(apply).not.toContain("out_of_area_log");
-    expect(readFileSync("app/api/apply/route.ts", "utf8")).toContain("outOfArea: result.outOfArea");
-    expect(apply).not.toContain("outOfAreaAdminEmail");
+    expect(apply.indexOf("saveOutOfAreaInterest")).toBeLessThan(apply.indexOf('from("organizers").insert'));
   });
 
-  it("tallies a non-T code and saves a waitlist row only with email and consent", () => {
-    expect(tallyPrefix("S7K", areas)).toEqual({ country: "CA", prefix: "S7K" });
-    expect(tallyPrefix("S7K 3J7", areas)).toEqual({ country: "CA", prefix: "S7K" });
-    const base = { postal: "S7K", areas, honeypot: "", rateLimited: false, existing: null };
-    expect(planWaitlistJoin({ ...base, email: "", consent: false })).toEqual({ action: "reject" });
-    expect(planWaitlistJoin({ ...base, email: "pat@example.com", consent: false })).toEqual({ action: "reject" });
-    expect(planWaitlistJoin({ ...base, email: "Pat@Example.com", consent: true })).toEqual({
-      action: "insert",
-      email: "pat@example.com",
-      country: "CA",
-      prefix: "S7K",
-      consentText: WAITLIST_CONSENT,
+  it("saves one S7K waitlist row, tallies once, and emails delivered@resend.dev on Preview", async () => {
+    const store = memory();
+    const result = await saveOutOfAreaInterest({
+      email: "Gus@Example.com",
+      postal: "S7K 1A1",
+      areas,
+      find: store.find,
+      insert: store.insert,
+      tally: store.tally,
+      send: store.send,
+      origin,
     });
+    expect(result.emailed).toBe(true);
+    expect(store.tallies).toBe(1);
+    expect(store.rows).toHaveLength(1);
+    expect(store.rows[0].consentText).toBe(IMPLIED_WAITLIST_CONSENT);
+    expect(store.rows[0].email).toBe("gus@example.com");
+    expect(store.rows[0].prefix).toBe("S7K");
+    expect(store.sent).toHaveLength(1);
+    const envelope = resendBody(store.sent[0], { VERCEL_ENV: "preview", EMAIL_TEST_RECIPIENT: "delivered@resend.dev" });
+    expect(envelope.to).toEqual(["delivered@resend.dev"]);
+    expect(store.sent[0].text).toContain(`/waitlist/unsubscribe/${"a".repeat(64)}`);
+    expect(envelope.headers?.["List-Unsubscribe"]).toContain(`/api/waitlist/unsubscribe?token=${"a".repeat(64)}`);
+    expect(envelope.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+    expect(store.sent[0].text).toContain(WAITLIST_BODY);
+    expect(store.sent[0].text).toContain("Sweet Success Fundraising Inc., [mailing address]");
+    expect(store.sent[0].text).not.toMatch(/skittles|jolly rancher|gummy/i);
+    expect(readFileSync("lib/waitlist-copy.ts", "utf8")).toContain("// COPY-PENDING-CORA");
   });
 
-  it("does not save a duplicate or clear an unsubscribe", () => {
-    const again = planWaitlistJoin({
+  it("does not add a second row or email an unsubscribed address", async () => {
+    const store = memory();
+    await saveOutOfAreaInterest({
+      email: "pat@example.com",
+      postal: "S7K",
+      areas,
+      find: store.find,
+      insert: store.insert,
+      tally: store.tally,
+      send: store.send,
+      origin,
+    });
+    const again = await saveOutOfAreaInterest({
       email: "PAT@example.com",
-      consent: true,
       postal: "S7K",
       areas,
-      honeypot: "",
-      rateLimited: false,
-      existing: { email: "pat@example.com", unsubscribedAt: null },
+      find: store.find,
+      insert: store.insert,
+      tally: store.tally,
+      send: store.send,
+      origin,
     });
-    const unsubscribed = planWaitlistJoin({
+    expect(again.emailed).toBe(false);
+    expect(store.rows).toHaveLength(1);
+    expect(store.sent).toHaveLength(1);
+    store.rows[0].unsubscribedAt = "2026-11-23T00:00:00Z";
+    const blocked = await saveOutOfAreaInterest({
       email: "pat@example.com",
-      consent: true,
       postal: "S7K",
       areas,
-      honeypot: "",
-      rateLimited: false,
-      existing: { email: "pat@example.com", unsubscribedAt: "2026-11-23T00:00:00Z" },
+      find: store.find,
+      insert: store.insert,
+      tally: store.tally,
+      send: store.send,
+      origin,
     });
-    expect(again).toEqual({ action: "keep" });
-    expect(unsubscribed).toEqual({ action: "keep" });
-    expect(unsubscribeOnPost("2026-11-23T00:00:00Z", "2026-11-24T00:00:00Z")).toEqual({
-      unsubscribedAt: "2026-11-23T00:00:00Z",
-      changed: false,
-    });
+    expect(blocked.emailed).toBe(false);
+    expect(store.rows).toHaveLength(1);
+    expect(store.rows[0].unsubscribedAt).toBe("2026-11-23T00:00:00Z");
+    expect(store.sent).toHaveLength(1);
+    expect(unsubscribeOnPost("2026-11-23T00:00:00Z", "2026-11-24T00:00:00Z").changed).toBe(false);
     expect(unsubscribeOnPost(null, "2026-11-24T00:00:00Z").changed).toBe(true);
-  });
-
-  it("ignores a honeypot or a rate-limit drop without a tally key of its own", () => {
-    const dropped = { email: "pat@example.com", consent: true, postal: "S7K", areas, existing: null };
-    expect(planWaitlistJoin({ ...dropped, honeypot: "Acme", rateLimited: false })).toEqual({ action: "ignore" });
-    expect(planWaitlistJoin({ ...dropped, honeypot: "", rateLimited: true })).toEqual({ action: "ignore" });
-    expect(tallyPrefix("not a postal", areas)).toBeNull();
-    resetRateLimit();
-    for (let i = 0; i < 8; i += 1) expect(allowRequest("hash-only", 8, 60_000, 1_000)).toBe(true);
-    expect(allowRequest("hash-only", 8, 60_000, 1_000)).toBe(false);
-  });
-
-  it("renders the Option B wording, the bracketed sender line, and the required markers", () => {
-    const form = readFileSync("components/ApplyForm.tsx", "utf8");
     const page = readFileSync("app/waitlist/unsubscribe/[token]/page.tsx", "utf8");
-    expect(WAITLIST_HEADING).toBe("We're not in your area yet");
-    expect(WAITLIST_BODY).toBe("Thanks for your interest. Sweet Success Fundraising isn't available at that postal code yet. We're currently serving groups in Alberta.");
-    expect(WAITLIST_OPTIONAL).toBe("If you'd like, leave your email and we'll let you know if we come to your area.");
-    expect(WAITLIST_CONSENT).toBe("Yes, email me if Sweet Success Fundraising Inc. starts serving my area. I can unsubscribe anytime.");
-    expect(WAITLIST_SENDER).toBe("Sweet Success Fundraising Inc., [mailing address] · [contact email or website]");
-    expect(form).toContain("WAITLIST_HEADING");
-    expect(form).toContain("WAITLIST_BODY");
-    expect(form).toContain("WAITLIST_OPTIONAL");
-    expect(form).toContain("WAITLIST_CONSENT");
-    expect(form).toContain("WAITLIST_SENDER");
-    expect(form).not.toContain("We saved your note");
-    expect(form).not.toContain("Alberta groups only");
-    expect(form).toContain("* required");
-    expect(form).toContain('aria-required="true"');
-    expect(form).toContain('aria-hidden="true"');
-    expect(form).toContain('tabIndex={-1}');
-    expect(form).toContain('autoComplete="off"');
-    expect(form).toContain('role="alert"');
-    expect(form).toContain("tabIndex={-1}");
-    expect(form).toContain("onBlur={onPostalBlur}");
-    expect(form).not.toContain('htmlFor="sport"');
-    expect(postalFieldHint()).toBeNull();
     expect(page).toContain('method="post"');
-    expect(page).not.toContain("unsubscribed_at");
-    const headers = waitlistUnsubscribeHeaders("https://preview.example", "abc");
-    expect(headers["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
-    expect(headers["List-Unsubscribe"]).toContain("/api/waitlist/unsubscribe?token=abc");
-    expect(readFileSync("app/admin/waitlist/page.tsx", "utf8")).not.toContain("send");
+    expect(page).not.toContain(".update(");
+    expect(readFileSync("app/api/waitlist/unsubscribe/route.ts", "utf8")).toContain("fromQuery");
+  });
+
+  it("formats the headline and keeps a single alert", () => {
+    expect(formatServedCode("s7k1a1")).toBe("S7K 1A1");
+    expect(formatServedCode("s7k 1a1")).toBe("S7K 1A1");
+    expect(formatServedCode("90210-1234")).toBe("90210");
+    expect(formatServedCode("  s7k ")).toBe("S7K");
+    expect(waitlistHeadline("s7k1a1")).toBe("Thanks for checking! We don't serve postal code S7K 1A1 yet.");
+    expect(waitlistHeadline("<script>")).toBe("Thanks for checking! We don't serve postal code <SCRIPT> yet.");
+    expect(escapeHtml("<script>")).toBe("&lt;script&gt;");
+    expect(outOfAreaMessage("<script>", `${origin}/waitlist/unsubscribe/${"b".repeat(32)}`).html).toContain("&lt;SCRIPT&gt;");
+    expect(postalFieldHint()).toBe("Currently serving Alberta groups only.");
+    expect(WAITLIST_RESULT_NOTE).toBe("We've emailed you and will let you know if we come to your area. You can unsubscribe anytime.");
+    expect(WAITLIST_BODY.startsWith("Thanks for your interest.")).toBe(true);
+    const form = readFileSync("components/ApplyForm.tsx", "utf8");
+    expect(form.match(/role="alert"/g)).toHaveLength(1);
+    expect(form).toContain("aria-describedby=\"postal-hint\"");
+    expect(form).toContain("postalFieldHint()");
+    expect(form).toContain("waitlistHeadline(awayCode)");
+    expect(form).not.toContain("dangerouslySetInnerHTML");
+    expect(form).not.toContain("Notify me");
+    expect(form).toContain('aria-hidden="true"');
+    expect(form).toContain("tabIndex={-1}");
+    const host = {
+      shadowRoot: {
+        getElementById(id: string) {
+          return id === "__next-route-announcer__" ? node : null;
+        },
+      },
+    };
+    const node = {
+      role: "alert",
+      getAttribute(name: string) { return name === "role" ? this.role : null; },
+      setAttribute(name: string, value: string) { if (name === "role") this.role = value; },
+    };
+    const empty = {
+      id: "",
+      textContent: "  ",
+      role: "alert",
+      getAttribute(name: string) { return name === "role" ? "alert" : null; },
+      removeAttribute(name: string) { if (name === "role") this.role = ""; },
+    };
+    const doc = {
+      getElementsByName() { return [host]; },
+      querySelectorAll() { return [empty]; },
+    };
+    silenceRouteAnnouncer(doc as unknown as Document);
+    expect(node.role).toBe("status");
+    expect(empty.role).toBe("");
   });
 });

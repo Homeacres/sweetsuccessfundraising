@@ -1,16 +1,13 @@
 import { ApplyForm } from "@/components/ApplyForm";
 import { ProductPhotoView } from "@/components/ProductPhoto";
 import { bearsPhoto, fruitChewsPhoto, spheresPhoto } from "@/components/product-photos";
-import type { PostalArea } from "@/lib/area";
 import { sportListUnavailable, type SportChoice } from "@/lib/apply-sport";
 import { listSports } from "@/lib/catalog";
 import { supabaseConfigured } from "@/lib/env";
-import { loadPostalAreas } from "@/lib/postal-areas";
 import { TEAM_KEEP_ABOUT } from "@/lib/quote-copy";
 
 export default async function HomePage() {
   let sports: SportChoice[] = [];
-  let areas: PostalArea[] = [];
   let sportsError = false;
   const configured = supabaseConfigured();
   if (!configured) {
@@ -18,15 +15,7 @@ export default async function HomePage() {
     console.error("sport list failed: supabase is not configured");
   } else {
     try {
-      const [listed, loaded] = await Promise.all([
-        listSports(),
-        loadPostalAreas().catch((error: unknown) => {
-          console.error("postal areas failed", error instanceof Error ? error.message : "error");
-          return [] as PostalArea[];
-        }),
-      ]);
-      sports = listed;
-      areas = loaded;
+      sports = await listSports();
       if (sportListUnavailable(sports)) {
         sports = [];
         sportsError = true;
@@ -57,7 +46,7 @@ export default async function HomePage() {
           </div>
           <div>
             {!configured && <p className="lede">The application form needs the server environment before it can save.</p>}
-            <ApplyForm sports={sports} sportsError={sportsError} areas={areas} />
+            <ApplyForm sports={sports} sportsError={sportsError} />
           </div>
         </div>
       </section>
