@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    deviceSizes: [640, 828, 1080],
+    imageSizes: [360, 640],
+  },
   async headers() {
     return [
       {

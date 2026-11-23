@@ -37,7 +37,15 @@ export async function publicBagPrices(): Promise<PublicBagPrice[]> {
   }));
 }
 
+const SPORT_TTL_MS = 60_000;
+let sportCache: { at: number; rows: SportOption[] } | null = null;
+
+export function clearSportCache(): void {
+  sportCache = null;
+}
+
 export async function listSports(): Promise<SportOption[]> {
+  if (sportCache && Date.now() - sportCache.at < SPORT_TTL_MS) return sportCache.rows;
   const { data, error } = await supabaseAdmin()
     .from("sports")
     .select("sport_name, emoji, sort_order, sport_product_names!inner(product_id)")
@@ -58,7 +66,9 @@ export async function listSports(): Promise<SportOption[]> {
     is_active: true,
     nameCount: Array.isArray(row.sport_product_names) ? Math.max(row.sport_product_names.length, 1) : 1,
   }));
-  return applySportOptions(catalog);
+  const options = applySportOptions(catalog);
+  sportCache = { at: Date.now(), rows: options };
+  return options;
 }
 
 export async function serviceProvinces(): Promise<string[]> {

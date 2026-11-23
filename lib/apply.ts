@@ -1,4 +1,5 @@
-import { formatPostal, matchPostalArea, OUT_OF_AREA_MESSAGE, type PostalArea } from "@/lib/area";
+import { formatPostal, matchPostalArea, tallyPrefix } from "@/lib/area";
+import { loadPostalAreas } from "@/lib/postal-areas";
 import { prospectActionUrls, prospectReplyTo } from "@/lib/email/prospect";
 import { applyEmailsWillSend, deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
 import { parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable } from "@/lib/apply-sport";
@@ -28,7 +29,7 @@ export type ApplyInput = {
 
 export type ApplyResult =
   | { ok: true; already?: boolean; outOfArea?: boolean; emailed: boolean; summary: BagEstimate | null; startUrl: string | null; notices?: ApplyNotice[] }
-  | { ok: false; error: string; status: number };
+  | { ok: false; error?: string; outOfArea?: boolean; status: number };
 
 /** A retry of the same estimate inside this window reuses the saved row and does not send another quote. */
 export const QUOTE_REUSE_MS = 10 * 60 * 1000;
@@ -86,8 +87,9 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
   if (!summary) return { ok: false, error: "Enter a goal of at least $100.", status: 400 };
 
   let sports;
+  let areas;
   try {
-    sports = await listSports();
+    [sports, areas] = await Promise.all([listSports(), loadPostalAreas()]);
   } catch (error) {
     console.error("sport list failed", error instanceof Error ? error.message : "error");
     return { ok: false, error: SPORT_LIST_ERROR, status: 503 };
@@ -104,19 +106,18 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
   if (!resolvedSport.ok) return { ok: false, error: resolvedSport.error, status: 400 };
 
   const db = supabaseAdmin();
-  const { data: areaRows, error: areaError } = await db.from("postal_areas").select("prefix, country, is_active");
-  if (areaError) throw areaError;
-  const areas: PostalArea[] = (areaRows ?? []).flatMap((row) => {
-    if ((row.country !== "CA" && row.country !== "US") || typeof row.prefix !== "string") return [];
-    return [{ prefix: row.prefix, country: row.country, isActive: Boolean(row.is_active) }];
-  });
   const area = matchPostalArea(input.postal, areas);
   if (!area.ok) {
-    return {
-      ok: false,
-      error: area.reason === "invalid" ? "Enter a Canadian postal code." : OUT_OF_AREA_MESSAGE,
-      status: 400,
-    };
+    if (area.reason === "invalid") return { ok: false, error: "Enter a Canadian postal code.", status: 400 };
+    const tally = tallyPrefix(input.postal, areas);
+    if (tally) {
+      const { error: tallyError } = await db.rpc("increment_rejected_area_tally", {
+        p_country: tally.country,
+        p_prefix: tally.prefix,
+      });
+      if (tallyError) throw tallyError;
+    }
+    return { ok: false, outOfArea: true, status: 400 };
   }
 
   const { data: existing, error: existingError } = await db

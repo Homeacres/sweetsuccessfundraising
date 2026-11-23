@@ -8,6 +8,7 @@ export function AdminNav() {
       <Link href="/admin/reviews">Review</Link>
       <Link href="/admin/inbox">Inbox</Link>
       <Link href="/admin/bundles">Bundles</Link>
+      <Link href="/admin/waitlist">Waitlist</Link>
     </nav>
   );
 }

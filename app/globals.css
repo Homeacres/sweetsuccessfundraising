@@ -143,6 +143,9 @@ textarea { min-height: 88px; }
 .check { display: flex; gap: 10px; align-items: flex-start; text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 500; margin: 14px 0; }
 .check input { width: 20px; height: 20px; min-height: 20px; margin-top: 2px; accent-color: var(--navy); }
 .hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
+.req { font-weight: 700; }
+.area-alert { margin-top: 12px; scroll-margin-top: 84px; }
+.area-alert:focus { outline: 2px solid var(--navy); outline-offset: 2px; }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;

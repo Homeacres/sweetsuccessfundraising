@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { SportField } from "@/components/SportField";
+import { matchPostalArea, type AreaResult, type PostalArea } from "@/lib/area";
 import { applyThanksHeading } from "@/lib/apply-heading";
 import { OTHER_SPORT, SPORT_LIST_ERROR, type SportChoice } from "@/lib/apply-sport";
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
 import { type BagEstimate } from "@/lib/estimate";
 import { formatQuoteGoal, TEAM_KEEP_ABOUT } from "@/lib/quote-copy";
+import { WAITLIST_BODY, WAITLIST_CONSENT, WAITLIST_HEADING, WAITLIST_OPTIONAL, WAITLIST_SENDER, postalFieldHint } from "@/lib/waitlist-copy";
 
 const HEARD = [
   "Coach or team manager",
@@ -97,7 +99,17 @@ export function ApplyConfirmation({
   );
 }
 
-export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; sportsError: boolean }) {
+function RequiredLabel({ htmlFor, children }: { htmlFor?: string; children: string }) {
+  return (
+    <label htmlFor={htmlFor}>
+      {children} <span className="req" aria-hidden="true">*</span>
+    </label>
+  );
+}
+
+export function ApplyForm({ sports, sportsError, areas }: { sports: SportChoice[]; sportsError: boolean; areas: PostalArea[] }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const alertRef = useRef<HTMLDivElement>(null);
   const [consent, setConsent] = useState(false);
   const [company, setCompany] = useState("");
   const [sport, setSport] = useState("");
@@ -111,7 +123,14 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
   const [startUrl, setStartUrl] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [formEpoch, setFormEpoch] = useState(0);
-  const [ready, setReady] = useState(false);
+  const [postalCheck, setPostalCheck] = useState<AreaResult | null>(null);
+  const [waitlistEmail, setWaitlistEmail] = useState("");
+  const [waitlistConsent, setWaitlistConsent] = useState(false);
+  const [waitlistCompany, setWaitlistCompany] = useState("");
+  const [waitlistPending, setWaitlistPending] = useState(false);
+  const [waitlistNoted, setWaitlistNoted] = useState(false);
+  const away = Boolean(postalCheck && !postalCheck.ok && postalCheck.reason === "out_of_area");
+  postalFieldHint();
 
   useEffect(() => {
     const saved = readSaved();
@@ -128,10 +147,7 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
       setStartUrl(saved.startUrl);
       setDone("saved");
       requestAnimationFrame(scrollToApply);
-    } else if (!window.history.state?.ssf) {
-      window.history.replaceState({ ssf: "form" }, "", "/#apply");
     }
-    setReady(true);
     function onPop() {
       const current = readSaved();
       if (window.location.hash === "#quote" && current) {
@@ -160,6 +176,14 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
+
+  useEffect(() => {
+    if (!away) return;
+    const typed = formRef.current ? String(new FormData(formRef.current).get("email") || "") : "";
+    if (typed) setWaitlistEmail(typed);
+    alertRef.current?.scrollIntoView({ block: "center" });
+    alertRef.current?.focus();
+  }, [away]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -203,6 +227,11 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
         summary?: BagEstimate | null;
         startUrl?: string | null;
       };
+      if (data.outOfArea) {
+        setError(null);
+        setPostalCheck({ ok: false, reason: "out_of_area", postal: "", province: null });
+        return;
+      }
       if (!response.ok || !data.ok) {
         setError(data.error || "We couldn't save that. Please try again.");
         return;
@@ -248,47 +277,70 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
     }
   }
 
-  if (!ready) return <div className="card" id="apply" aria-busy="true" />;
+  function onPostalBlur(event: React.FocusEvent<HTMLInputElement>) {
+    setPostalCheck(matchPostalArea(event.currentTarget.value, areas));
+  }
+
+  async function joinWaitlist() {
+    if (waitlistPending) return;
+    const postal = formRef.current ? String(new FormData(formRef.current).get("postal") || "") : "";
+    setWaitlistPending(true);
+    try {
+      const response = await fetch("/api/area-waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: waitlistEmail,
+          consent: waitlistConsent,
+          postal,
+          company: waitlistCompany,
+        }),
+      });
+      const data = (await response.json()) as { ok?: boolean };
+      if (data.ok) setWaitlistNoted(true);
+    } catch {
+      setError("We couldn't save that. Please try again.");
+    } finally {
+      setWaitlistPending(false);
+    }
+  }
 
   if (done === "saved") {
     return <ApplyConfirmation firstName={thanksName} email={thanksEmail} summary={summary} startUrl={startUrl} />;
   }
 
-  if (done) {
+  if (done === "already") {
     return (
       <div className="card quote-card" id="apply">
-        <h2>{done === "away" ? "We're not in that area yet" : "We already have this quote"}</h2>
-        <p>
-          {done === "away"
-            ? "Sweet Success currently serves Alberta. We saved your note and will be in touch if that changes."
-            : "This email already has a quote. Use Start my fundraiser in that email."}
-        </p>
+        <h2>We already have this quote</h2>
+        <p>This email already has a quote. Use Start my fundraiser in that email.</p>
       </div>
     );
   }
 
   return (
-    <form className="card" id="apply" key={formEpoch} onSubmit={onSubmit}>
+    <form className="card" id="apply" key={formEpoch} ref={formRef} onSubmit={onSubmit}>
       <h2>Calculate your fundraiser</h2>
+      <p className="fine">* required</p>
       <p className="hint">Tell us about your group. Your estimate stays on this page. No upfront cost.</p>
       <p>{TEAM_KEEP_ABOUT}</p>
       <div className="row two">
         <div>
-          <label htmlFor="firstName">First name</label>
-          <input id="firstName" name="firstName" autoComplete="given-name" required defaultValue={draft?.firstName || ""} />
+          <RequiredLabel htmlFor="firstName">First name</RequiredLabel>
+          <input id="firstName" name="firstName" autoComplete="given-name" required aria-required="true" defaultValue={draft?.firstName || ""} />
         </div>
         <div>
-          <label htmlFor="lastName">Last name</label>
-          <input id="lastName" name="lastName" autoComplete="family-name" required defaultValue={draft?.lastName || ""} />
+          <RequiredLabel htmlFor="lastName">Last name</RequiredLabel>
+          <input id="lastName" name="lastName" autoComplete="family-name" required aria-required="true" defaultValue={draft?.lastName || ""} />
         </div>
       </div>
-      <label htmlFor="email">Email</label>
-      <input id="email" name="email" type="email" autoComplete="email" required defaultValue={draft?.email || ""} />
+      <RequiredLabel htmlFor="email">Email</RequiredLabel>
+      <input id="email" name="email" type="email" autoComplete="email" required aria-required="true" defaultValue={draft?.email || ""} />
       <label htmlFor="phone">Phone <span className="fine">(optional)</span></label>
       <input id="phone" name="phone" type="tel" autoComplete="tel" defaultValue={draft?.phone || ""} />
-      <label htmlFor="team">Team, Association or Club name</label>
-      <input id="team" name="team" required defaultValue={draft?.team || ""} />
-      <label id="sport-label" htmlFor="sport">Sport / Activity</label>
+      <RequiredLabel htmlFor="team">Team, Association or Club name</RequiredLabel>
+      <input id="team" name="team" required aria-required="true" defaultValue={draft?.team || ""} />
+      <label id="sport-label">Sport / Activity <span className="req" aria-hidden="true">*</span></label>
       {sportsError ? (
         <p id="sport" className="alert error" role="alert">{SPORT_LIST_ERROR}</p>
       ) : (
@@ -296,7 +348,7 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
       )}
       {sport === OTHER_SPORT ? (
         <>
-          <label htmlFor="sportOther">Which sport / activity?</label>
+          <RequiredLabel htmlFor="sportOther">Which sport / activity?</RequiredLabel>
           <input
             id="sportOther"
             name="sportOther"
@@ -304,6 +356,7 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
             onChange={(event) => setSportOther(event.target.value)}
             maxLength={40}
             required
+            aria-required="true"
           />
         </>
       ) : null}
@@ -313,18 +366,42 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
           <input id="city" name="city" autoComplete="address-level2" defaultValue={draft?.city || ""} />
         </div>
         <div>
-          <label htmlFor="postal">Postal code</label>
-          <input id="postal" name="postal" autoComplete="postal-code" placeholder="T0M 1X0" required defaultValue={draft?.postal || ""} />
+          <RequiredLabel htmlFor="postal">Postal code</RequiredLabel>
+          <input id="postal" name="postal" autoComplete="postal-code" placeholder="T0M 1X0" required aria-required="true" defaultValue={draft?.postal || ""} onBlur={onPostalBlur} />
         </div>
+      </div>
+      {away ? (
+        <div className="area-alert" id="out-of-area" ref={alertRef} tabIndex={-1} role="alert">
+          <h2>{WAITLIST_HEADING}</h2>
+          <p>{WAITLIST_BODY}</p>
+          {waitlistNoted ? null : (
+            <>
+              <label htmlFor="waitlist-email">Email</label>
+              <input id="waitlist-email" name="waitlistEmail" type="email" autoComplete="email" value={waitlistEmail} onChange={(event) => setWaitlistEmail(event.target.value)} />
+              <label className="check">
+                <input type="checkbox" name="waitlistConsent" checked={waitlistConsent} onChange={(event) => setWaitlistConsent(event.target.checked)} />
+                <span>{WAITLIST_CONSENT}</span>
+              </label>
+              <p className="fine">{WAITLIST_SENDER}</p>
+              <button className="btn btn-navy" type="button" onClick={joinWaitlist} disabled={waitlistPending}>
+                {WAITLIST_OPTIONAL}
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
+      <div className="hp" aria-hidden="true">
+        <label htmlFor="waitlist-company">Company</label>
+        <input id="waitlist-company" name="waitlistCompany" tabIndex={-1} autoComplete="off" value={waitlistCompany} onChange={(event) => setWaitlistCompany(event.target.value)} />
       </div>
       <div className="row two">
         <div>
-          <label htmlFor="participants">Number of participants</label>
-          <input id="participants" name="participants" inputMode="numeric" min={1} max={200} step={1} required defaultValue={draft?.participants || ""} />
+          <RequiredLabel htmlFor="participants">Number of participants</RequiredLabel>
+          <input id="participants" name="participants" inputMode="numeric" min={1} max={200} step={1} required aria-required="true" defaultValue={draft?.participants || ""} />
         </div>
         <div>
-          <label htmlFor="goal">Goal your group keeps ($)</label>
-          <input id="goal" name="goal" inputMode="decimal" min={100} required defaultValue={draft?.goal || ""} />
+          <RequiredLabel htmlFor="goal">Goal your group keeps ($)</RequiredLabel>
+          <input id="goal" name="goal" inputMode="decimal" min={100} required aria-required="true" defaultValue={draft?.goal || ""} />
         </div>
       </div>
       <label htmlFor="howHeard">How did you hear about us?</label>
@@ -336,11 +413,11 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
         <input type="checkbox" name="consent" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
         <span>{CASL_CONSENT_TEXT} <a href="/privacy">Privacy</a></span>
       </label>
-      <div className="hp">
+      <div className="hp" aria-hidden="true">
         <label htmlFor="company">Company</label>
         <input id="company" name="company" tabIndex={-1} autoComplete="off" value={company} onChange={(event) => setCompany(event.target.value)} />
       </div>
-      {error && <div className="alert error" role="alert">{error}</div>}
+      {error ? <div className="alert error" role="alert">{error}</div> : null}
       <button className="btn btn-navy" type="submit" disabled={pending || sportsError}>
         {pending ? "Calculating…" : "See my estimate"}
       </button>

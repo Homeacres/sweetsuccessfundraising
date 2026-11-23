@@ -28,5 +28,10 @@ describe("anon catalog access", () => {
     expect(updateProduct.error).not.toBeNull();
     const deleteBag = await db.from("bag_types").delete().eq("code", "standard");
     expect(deleteBag.error).not.toBeNull();
+
+    const waitlist = await db.from("area_waitlist").select("id");
+    expect(waitlist.error).not.toBeNull();
+    const tallies = await db.from("rejected_area_tallies").select("tally_id");
+    expect(tallies.error).not.toBeNull();
   });
 });

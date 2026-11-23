@@ -18,9 +18,6 @@ const POSTAL_PROVINCE: Record<string, string> = {
   Y: "YT",
 };
 
-export const OUT_OF_AREA_MESSAGE =
-  "Sweet Success currently serves Alberta. We saved your note and will be in touch if that changes.";
-
 export type PostalArea = {
   prefix: string;
   country: "CA" | "US";
@@ -62,6 +59,18 @@ export function matchPostalArea(postalInput: string, areas: PostalArea[]): AreaR
   const best = matches[0];
   if (!best || !best.isActive) return { ok: false, reason: "out_of_area", postal, province };
   return { ok: true, postal, province, country, prefix: best.prefix };
+}
+
+/** FSA or 3-digit ZIP for a genuine out-of-area code. Invalid formats return null and must not be tallied. */
+export function tallyPrefix(postalInput: string, areas: PostalArea[]): { country: "CA" | "US"; prefix: string } | null {
+  const area = matchPostalArea(postalInput, areas);
+  if (area.ok || area.reason !== "out_of_area") return null;
+  const postal = area.postal;
+  if (/^[A-Z]\d[A-Z]\d[A-Z]\d$/.test(postal) || /^[A-Z]\d[A-Z]$/.test(postal)) {
+    return { country: "CA", prefix: postal.slice(0, 3) };
+  }
+  if (/^\d{5}(\d{4})?$/.test(postal)) return { country: "US", prefix: postal.slice(0, 3) };
+  return null;
 }
 
 export function formatPostal(compact: string): string {

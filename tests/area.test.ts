@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { matchPostalArea, OUT_OF_AREA_MESSAGE, type PostalArea } from "@/lib/area";
+import { matchPostalArea, type PostalArea } from "@/lib/area";
 
 const areas: PostalArea[] = [
   { prefix: "T", country: "CA", isActive: true },
@@ -29,9 +29,8 @@ describe("postal areas", () => {
       expect(area.postal).toBe("S7K");
     }
     expect(matchPostalArea("S7K 3J7", areas).ok).toBe(false);
-    expect(OUT_OF_AREA_MESSAGE).toBe("Sweet Success currently serves Alberta. We saved your note and will be in touch if that changes.");
-    expect(readFileSync("lib/apply.ts", "utf8")).toContain("OUT_OF_AREA_MESSAGE");
-    expect(readFileSync("components/ApplyForm.tsx", "utf8")).toContain(OUT_OF_AREA_MESSAGE);
+    expect(readFileSync("lib/apply.ts", "utf8")).not.toContain("out_of_area_log");
+    expect(readFileSync("components/ApplyForm.tsx", "utf8")).not.toContain("We saved your note");
   });
 
   it("rejects a US ZIP", () => {
