@@ -7,7 +7,7 @@ import { OTHER_SPORT, SPORT_LIST_ERROR, type SportChoice } from "@/lib/apply-spo
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
 import { type BagEstimate } from "@/lib/estimate";
 import { formatQuoteGoal, TEAM_KEEP_ABOUT } from "@/lib/quote-copy";
-import { WAITLIST_BODY, WAITLIST_RESULT_NOTE, postalFieldHint, waitlistHeadline } from "@/lib/waitlist-copy";
+import { WAITLIST_BODY, WAITLIST_CONTACT_EMAIL, WAITLIST_CONTACT_NAME, WAITLIST_CONTACT_SITE, WAITLIST_CONTACT_SITE_URL, WAITLIST_MAILING_ADDRESS, WAITLIST_RESULT_NOTE, postalFieldHint, waitlistHeadline } from "@/lib/waitlist-copy";
 
 const HEARD = [
   "Coach or team manager",
@@ -285,6 +285,15 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
           <h2>{waitlistHeadline(awayCode)}</h2>
           <p>{WAITLIST_BODY}</p>
           <p>{WAITLIST_RESULT_NOTE}</p>
+          <p>
+            {WAITLIST_CONTACT_NAME}
+            {" · "}
+            {WAITLIST_MAILING_ADDRESS}
+            {" · "}
+            <a href={`mailto:${WAITLIST_CONTACT_EMAIL}`}>{WAITLIST_CONTACT_EMAIL}</a>
+            {" · "}
+            <a href={WAITLIST_CONTACT_SITE_URL}>{WAITLIST_CONTACT_SITE}</a>
+          </p>
         </div>
       </div>
     );

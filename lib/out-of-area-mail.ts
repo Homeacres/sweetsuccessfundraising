@@ -1,7 +1,7 @@
 import type { PostalArea } from "@/lib/area";
 import { appUrl } from "@/lib/env";
 import { isPersonalGmail } from "@/lib/email/send";
-import { IMPLIED_WAITLIST_CONSENT, formatServedCode, outOfAreaTally, planOutOfAreaSave, waitlistEmailSubject, waitlistEmailText, waitlistGreeting } from "@/lib/waitlist-copy";
+import { IMPLIED_WAITLIST_CONSENT, WAITLIST_CONTACT_EMAIL, WAITLIST_CONTACT_NAME, WAITLIST_CONTACT_SITE, WAITLIST_CONTACT_SITE_URL, WAITLIST_MAILING_ADDRESS, formatServedCode, outOfAreaTally, planOutOfAreaSave, waitlistEmailSubject, waitlistEmailText, waitlistGreeting } from "@/lib/waitlist-copy";
 import { waitlistUnsubscribeHeaders } from "@/lib/waitlist-headers";
 
 const PUBLIC_WAITLIST_REPLY_TO = "hello@sweetsuccessfundraising.com";
@@ -12,7 +12,7 @@ export function waitlistReplyTo(env: Record<string, string | undefined> = proces
   return value;
 }
 
-export type SavedWaitlist = { token: string; unsubscribedAt: string | null };
+export type SavedWaitlist = { token: string; keepToken: string; unsubscribedAt: string | null };
 
 export function escapeHtml(value: string): string {
   return value
@@ -22,7 +22,7 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function outOfAreaMessage(input: { firstName: string; postal: string; unsubscribeUrl: string }, env: Record<string, string | undefined> = process.env): {
+export function outOfAreaMessage(input: { firstName: string; postal: string; unsubscribeUrl: string; keepUrl: string }, env: Record<string, string | undefined> = process.env): {
   subject: string;
   text: string;
   html: string;
@@ -31,13 +31,20 @@ export function outOfAreaMessage(input: { firstName: string; postal: string; uns
   const text = waitlistEmailText(input);
   const origin = input.unsubscribeUrl.slice(0, input.unsubscribeUrl.indexOf("/waitlist/unsubscribe/"));
   const token = input.unsubscribeUrl.slice(input.unsubscribeUrl.lastIndexOf("/") + 1);
+  const contact = [
+    escapeHtml(WAITLIST_CONTACT_NAME),
+    escapeHtml(WAITLIST_MAILING_ADDRESS),
+    `<a href="mailto:${WAITLIST_CONTACT_EMAIL}">${WAITLIST_CONTACT_EMAIL}</a>`,
+    `<a href="${WAITLIST_CONTACT_SITE_URL}">${WAITLIST_CONTACT_SITE}</a>`,
+  ].join(" · ");
   const html = [
     `<p>${escapeHtml(waitlistGreeting(input.firstName))}</p>`,
     `<p>${escapeHtml(`Thanks for asking about a fundraiser with Sweet Success. We don't serve postal code ${formatServedCode(input.postal)} yet.`)}</p>`,
     "<p>We've added you to our list, and we'll email you if we start serving your area. You can unsubscribe anytime with the link below.</p>",
-    "<p>Questions? Email hello@sweetsuccessfundraising.com</p>",
+    `<p>Want to make sure you hear from us?<br><a href="${escapeHtml(input.keepUrl)}">Yes, keep me posted</a></p>`,
+    `<p>Questions? Email <a href="mailto:${WAITLIST_CONTACT_EMAIL}">${WAITLIST_CONTACT_EMAIL}</a></p>`,
     "<p>Thanks,<br>The Sweet Success Family</p>",
-    "<p>Sweet Success Fundraising Inc. · [MAILING ADDRESS – Chris to pick] · [CONTACT EMAIL OR WEBSITE – Chris to pick]</p>",
+    `<p>${contact}</p>`,
     `<p><a href="${escapeHtml(input.unsubscribeUrl)}">Unsubscribe</a></p>`,
   ].join("");
   return {
@@ -81,7 +88,8 @@ export async function saveOutOfAreaInterest(input: {
   if (plan === "keep") return { emailed: false };
   const origin = input.origin || appUrl();
   const unsubscribeUrl = `${origin}/waitlist/unsubscribe/${row.token}`;
-  const message = outOfAreaMessage({ firstName: input.firstName, postal: input.postal, unsubscribeUrl });
+  const keepUrl = `${origin}/waitlist/keep?t=${encodeURIComponent(row.keepToken)}`;
+  const message = outOfAreaMessage({ firstName: input.firstName, postal: input.postal, unsubscribeUrl, keepUrl });
   await input.send({ to: email, ...message });
   return { emailed: true };
 }

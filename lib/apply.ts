@@ -120,14 +120,14 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
       find: async (email, country, prefix) => {
         const { data, error } = await db
           .from("area_waitlist")
-          .select("unsub_token, unsubscribed_at")
+          .select("unsub_token, keep_token, unsubscribed_at")
           .eq("email", email)
           .eq("country", country)
           .eq("postal_prefix", prefix)
           .maybeSingle();
         if (error) throw error;
-        if (!data?.unsub_token) return null;
-        return { token: data.unsub_token, unsubscribedAt: data.unsubscribed_at };
+        if (!data?.unsub_token || !data.keep_token) return null;
+        return { token: data.unsub_token, keepToken: data.keep_token, unsubscribedAt: data.unsubscribed_at };
       },
       insert: async (row) => {
         const { data, error } = await db.from("area_waitlist").insert({
@@ -135,9 +135,9 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
           country: row.country,
           postal_prefix: row.prefix,
           consent_text: IMPLIED_WAITLIST_CONSENT,
-        }).select("unsub_token, unsubscribed_at").single();
+        }).select("unsub_token, keep_token, unsubscribed_at").single();
         if (error) throw error;
-        return { token: data.unsub_token, unsubscribedAt: data.unsubscribed_at };
+        return { token: data.unsub_token, keepToken: data.keep_token, unsubscribedAt: data.unsubscribed_at };
       },
       tally: async (country, prefix) => {
         const { error } = await db.rpc("increment_rejected_area_tally", { p_country: country, p_prefix: prefix });

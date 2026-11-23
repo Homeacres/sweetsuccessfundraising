@@ -6,8 +6,25 @@ export const WAITLIST_BODY =
 export const IMPLIED_WAITLIST_CONSENT =
   "Implied consent: out-of-area enquiry via intake form (Chris approved add-all with unsubscribe, 2026-11-23)";
 
-export const WAITLIST_SENDER =
-  "Sweet Success Fundraising Inc., [mailing address] · [contact email or website]";
+export const WAITLIST_CONTACT_NAME = "Sweet Success Fundraising Inc.";
+export const WAITLIST_MAILING_ADDRESS = "Site 18, Comp 35 RR1, Sundre, AB T0M 1X0";
+export const WAITLIST_CONTACT_EMAIL = "hello@sweetsuccessfundraising.com";
+export const WAITLIST_CONTACT_SITE = "sweetsuccessfundraising.com";
+export const WAITLIST_CONTACT_SITE_URL = "https://sweetsuccessfundraising.com";
+
+export function waitlistContactLine(): string {
+  return [WAITLIST_CONTACT_NAME, WAITLIST_MAILING_ADDRESS, WAITLIST_CONTACT_EMAIL, WAITLIST_CONTACT_SITE].join(" · ");
+}
+
+// DRAFT copy, Chris sign-off needed before go-live
+export const EXPRESS_CONSENT_TEXT =
+  "Yes, Sweet Success Fundraising Inc. may email me if it starts serving my area. I can unsubscribe anytime.";
+
+// DRAFT copy, Chris sign-off needed before go-live
+export const KEEP_BUTTON = "Keep me posted";
+
+// DRAFT copy, Chris sign-off needed before go-live
+export const KEEP_THANKS = "You're all set. We'll email you if we start serving your area.";
 
 export function postalFieldHint(): string {
   return "Currently serving Alberta groups only.";
@@ -48,7 +65,7 @@ export function waitlistGreeting(firstName: string): string {
 }
 
 // DRAFT copy, Chris sign-off needed before go-live
-export function waitlistEmailText(input: { firstName: string; postal: string; unsubscribeUrl: string }): string {
+export function waitlistEmailText(input: { firstName: string; postal: string; unsubscribeUrl: string; keepUrl: string }): string {
   const code = formatServedCode(input.postal);
   return [
     waitlistGreeting(input.firstName),
@@ -57,12 +74,15 @@ export function waitlistEmailText(input: { firstName: string; postal: string; un
     "",
     "We've added you to our list, and we'll email you if we start serving your area. You can unsubscribe anytime with the link below.",
     "",
+    "Want to make sure you hear from us?",
+    `Yes, keep me posted: ${input.keepUrl}`,
+    "",
     "Questions? Email hello@sweetsuccessfundraising.com",
     "",
     "Thanks,",
     "The Sweet Success Family",
     "",
-    "Sweet Success Fundraising Inc. · [MAILING ADDRESS – Chris to pick] · [CONTACT EMAIL OR WEBSITE – Chris to pick]",
+    waitlistContactLine(),
     `Unsubscribe: ${input.unsubscribeUrl}`,
   ].join("\n");
 }

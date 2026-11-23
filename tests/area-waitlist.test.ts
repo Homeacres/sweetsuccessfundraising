@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { tallyPrefix, type PostalArea } from "@/lib/area";
-import { unsubscribeOnPost } from "@/lib/area-waitlist";
+import { eligibleForAreaNotice, planExpressConsent, unsubscribeOnPost } from "@/lib/area-waitlist";
 import { escapeHtml, outOfAreaMessage, saveOutOfAreaInterest } from "@/lib/out-of-area-mail";
+import { waitlistContactLine } from "@/lib/waitlist-copy";
 import { resendBody } from "@/lib/email/send";
 import { silenceRouteAnnouncer } from "@/components/SilenceAnnouncer";
 import {
@@ -24,7 +25,7 @@ const areas: PostalArea[] = [
 const origin = "https://preview.example";
 
 function memory() {
-  const rows: { email: string; country: "CA" | "US"; prefix: string; consentText: string; token: string; unsubscribedAt: string | null }[] = [];
+  const rows: { email: string; country: "CA" | "US"; prefix: string; consentText: string; token: string; keepToken: string; unsubscribedAt: string | null }[] = [];
   const sent: { to: string; subject: string; text: string; html: string; headers: Record<string, string> }[] = [];
   let tallies = 0;
   return {
@@ -33,15 +34,15 @@ function memory() {
     get tallies() { return tallies; },
     async find(email: string, country: "CA" | "US", prefix: string) {
       const row = rows.find((item) => item.email === email && item.country === country && item.prefix === prefix);
-      return row ? { token: row.token, unsubscribedAt: row.unsubscribedAt } : null;
+      return row ? { token: row.token, keepToken: row.keepToken, unsubscribedAt: row.unsubscribedAt } : null;
     },
     async insert(row: { email: string; country: "CA" | "US"; prefix: string; consentText: string }) {
       if (rows.some((item) => item.email === row.email && item.country === row.country && item.prefix === row.prefix)) {
         throw Object.assign(new Error("duplicate"), { code: "23505" });
       }
-      const saved = { ...row, token: "a".repeat(64), unsubscribedAt: null };
+      const saved = { ...row, token: "a".repeat(64), keepToken: "k".repeat(64), unsubscribedAt: null };
       rows.push(saved);
-      return { token: saved.token, unsubscribedAt: null };
+      return { token: saved.token, keepToken: saved.keepToken, unsubscribedAt: null };
     },
     async tally() { tallies += 1; },
     async send(message: { to: string; subject: string; text: string; html: string; headers: Record<string, string> }) { sent.push(message); },
@@ -101,7 +102,11 @@ describe("out-of-area intake", () => {
     expect(store.sent[0].text).toContain("Hi Gus,");
     expect(store.sent[0].text).toContain("We don't serve postal code S7K 1A1 yet.");
     expect(store.sent[0].text).toContain("Questions? Email hello@sweetsuccessfundraising.com");
-    expect(store.sent[0].text).toContain("[MAILING ADDRESS – Chris to pick]");
+    expect(store.sent[0].text).toContain("Sweet Success Fundraising Inc. · Site 18, Comp 35 RR1, Sundre, AB T0M 1X0 · hello@sweetsuccessfundraising.com · sweetsuccessfundraising.com");
+    expect(store.sent[0].text.indexOf("Yes, keep me posted")).toBeLessThan(store.sent[0].text.indexOf("Questions? Email"));
+    expect(store.sent[0].html).toContain("/waitlist/keep?t=");
+    expect(store.sent[0].html).toContain('href="mailto:hello@sweetsuccessfundraising.com"');
+    expect(store.sent[0].html).toContain('href="https://sweetsuccessfundraising.com"');
     expect(store.sent[0].html).toContain(">Unsubscribe</a>");
     expect(store.sent[0].headers["Reply-To"]).toBe("hello@sweetsuccessfundraising.com");
     expect(store.sent[0].text).not.toMatch(/skittles|jolly rancher|gummy/i);
@@ -169,8 +174,27 @@ describe("out-of-area intake", () => {
     expect(waitlistHeadline("s7k1a1")).toBe("Thanks for checking! We don't serve postal code S7K 1A1 yet.");
     expect(waitlistHeadline("<script>")).toBe("Thanks for checking! We don't serve postal code <SCRIPT> yet.");
     expect(escapeHtml("<script>")).toBe("&lt;script&gt;");
-    expect(outOfAreaMessage({ firstName: "", postal: "<script>", unsubscribeUrl: `${origin}/waitlist/unsubscribe/${"b".repeat(32)}` }).html).toContain("&lt;SCRIPT&gt;");
-    expect(outOfAreaMessage({ firstName: "", postal: "S7K", unsubscribeUrl: `${origin}/waitlist/unsubscribe/${"b".repeat(32)}` }).text).toContain("Hi there,");
+    const link = `${origin}/waitlist/unsubscribe/${"b".repeat(32)}`;
+    const keep = `${origin}/waitlist/keep?t=${"k".repeat(32)}`;
+    expect(outOfAreaMessage({ firstName: "", postal: "<script>", unsubscribeUrl: link, keepUrl: keep }).html).toContain("&lt;SCRIPT&gt;");
+    expect(outOfAreaMessage({ firstName: "", postal: "S7K", unsubscribeUrl: link, keepUrl: keep }).text).toContain("Hi there,");
+    expect(waitlistContactLine()).toBe("Sweet Success Fundraising Inc. · Site 18, Comp 35 RR1, Sundre, AB T0M 1X0 · hello@sweetsuccessfundraising.com · sweetsuccessfundraising.com");
+    const now = new Date("2026-11-23T12:00:00Z");
+    expect(eligibleForAreaNotice({ unsubscribedAt: null, consentType: "express", consentedAt: "2020-01-01T00:00:00Z" }, now)).toBe(true);
+    expect(eligibleForAreaNotice({ unsubscribedAt: "2026-01-01T00:00:00Z", consentType: "express", consentedAt: "2026-11-01T00:00:00Z" }, now)).toBe(false);
+    expect(eligibleForAreaNotice({ unsubscribedAt: null, consentType: "implied", consentedAt: "2026-08-01T00:00:00Z" }, now)).toBe(true);
+    expect(eligibleForAreaNotice({ unsubscribedAt: null, consentType: "implied", consentedAt: "2026-01-01T00:00:00Z" }, now)).toBe(false);
+    expect(planExpressConsent(null, "2026-11-23T00:00:00Z")).toBe("neutral");
+    expect(planExpressConsent({ unsubscribedAt: "2026-11-01T00:00:00Z", consentType: "implied", expressConsentedAt: null }, "2026-11-23T00:00:00Z")).toBe("blocked");
+    expect(planExpressConsent({ unsubscribedAt: null, consentType: "implied", expressConsentedAt: null }, "2026-11-23T00:00:00Z")).toBe("set");
+    expect(planExpressConsent({ unsubscribedAt: null, consentType: "express", expressConsentedAt: "2026-11-01T00:00:00Z" }, "2026-11-23T00:00:00Z")).toBe("already");
+    const keepRoute = readFileSync("app/api/waitlist/keep/route.ts", "utf8");
+    const unsubRoute = readFileSync("app/api/waitlist/unsubscribe/route.ts", "utf8");
+    expect(keepRoute).toContain('.eq("keep_token", token)');
+    expect(keepRoute).not.toContain("unsub_token");
+    expect(unsubRoute).toContain('.eq("unsub_token", token)');
+    expect(unsubRoute).not.toContain("keep_token");
+    expect(readFileSync("app/waitlist/keep/page.tsx", "utf8")).not.toContain(".update(");
     expect(postalFieldHint()).toBe("Currently serving Alberta groups only.");
     expect(WAITLIST_RESULT_NOTE).toBe("We've emailed you, and we'll let you know if we start serving your area. You can unsubscribe anytime.");
     expect(WAITLIST_BODY.startsWith("Thanks for your interest.")).toBe(true);

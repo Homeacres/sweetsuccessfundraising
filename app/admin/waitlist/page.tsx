@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/AdminNav";
 import { matchPostalArea } from "@/lib/area";
+import { eligibleForAreaNotice } from "@/lib/area-waitlist";
 import { isAdminRequest } from "@/lib/admin-auth";
 import { loadPostalAreas } from "@/lib/postal-areas";
 import { supabaseAdmin } from "@/lib/supabase/admin";
@@ -15,7 +16,7 @@ export default async function WaitlistAdminPage() {
   if (!(await isAdminRequest())) redirect("/admin/login");
   const db = supabaseAdmin();
   const [peopleRes, tallyRes, areas] = await Promise.all([
-    db.from("area_waitlist").select("country, postal_prefix, unsubscribed_at"),
+    db.from("area_waitlist").select("country, postal_prefix, unsubscribed_at, consent_type, consented_at"),
     db.from("rejected_area_tallies").select("country, prefix, rejection_count"),
     loadPostalAreas(),
   ]);
@@ -62,6 +63,30 @@ export default async function WaitlistAdminPage() {
           </tbody>
         </table>
         {rows.length === 0 ? <p>No rows yet.</p> : null}
+      </div>
+      <div className="table-wrap panel">
+        <table>
+          <thead>
+            <tr><th>Prefix</th><th>Consent</th><th>Older than 6 months</th></tr>
+          </thead>
+          <tbody>
+            {(peopleRes.data ?? []).filter((row) => !row.unsubscribed_at).map((row, index) => {
+              const consentType = row.consent_type === "express" ? "express" : "implied";
+              const eligible = eligibleForAreaNotice({
+                unsubscribedAt: row.unsubscribed_at,
+                consentType,
+                consentedAt: row.consented_at,
+              });
+              return (
+                <tr key={`${row.postal_prefix}-${index}`}>
+                  <td>{row.postal_prefix}</td>
+                  <td>{consentType}</td>
+                  <td>{consentType === "implied" && !eligible ? "Yes" : "No"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
       <p className="muted"><Link href="/admin">Campaigns</Link></p>
     </main>
