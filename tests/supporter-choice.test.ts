@@ -48,6 +48,10 @@ describe("supporter shop player switch", () => {
     const checkout = readFileSync("lib/checkout.ts", "utf8");
     expect(checkout).toContain("creditParticipant");
     expect(checkout).toContain(".eq(\"campaign_id\", shop.campaign_id)");
+    const shop = readFileSync("components/Shop.tsx", "utf8");
+    expect(shop).toContain("Your player:");
+    expect(shop).toContain("Change player");
+    expect(shop).not.toContain("Support a different player");
     const page = readFileSync("app/s/[shareToken]/page.tsx", "utf8");
     expect(page).not.toContain("parent_token");
     expect(page).not.toContain("parent_email");

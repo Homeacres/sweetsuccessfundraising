@@ -224,7 +224,7 @@ export function Shop(props: {
       {props.notice ? <div className="alert">{props.notice}</div> : null}
       <p className="sub">
         {props.orderTarget?.kind === "supporter"
-          ? `This order supports ${props.orderTarget.firstName}. Candy is delivered in bulk to the organizer — no shipping address. `
+          ? `This order supports ${supportedFirstName}. Candy is delivered in bulk to the organizer — no shipping address. `
           : props.orderTarget?.kind === "parent"
             ? "Enter a cash or paper order for this participant. "
             : "Pay online. Candy is delivered in bulk to the organizer — no shipping address. "}
@@ -240,10 +240,12 @@ export function Shop(props: {
 
       {props.orderTarget?.kind === "supporter" ? (
         <div className="support-switch">
-          <p>Supporting {supportedFirstName}.</p>
-          <button type="button" aria-expanded={playersOpen} aria-controls="support-players" onClick={() => setPlayersOpen((open) => !open)}>
-            Support a different player
-          </button>
+          <div className="support-current">
+            <p>Your player: {supportedFirstName}</p>
+            <button type="button" aria-expanded={playersOpen} aria-controls="support-players" onClick={() => setPlayersOpen((open) => !open)}>
+              Change player
+            </button>
+          </div>
           {playersOpen ? (
             <ul id="support-players" role="listbox" aria-label="Players on this team">
               {props.players.map((player) => (
@@ -384,7 +386,7 @@ export function Shop(props: {
             {!bundle && lines.length === 0 && (
               <p className="muted">
                 {props.orderTarget?.kind === "supporter"
-                  ? `Supporting ${supportedFirstName}.`
+                  ? `Your player: ${supportedFirstName}.`
                   : `Choose a participant and add bags. The first tap starts at ${props.defaultQty}.`}
               </p>
             )}
