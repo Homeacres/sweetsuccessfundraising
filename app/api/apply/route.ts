@@ -24,7 +24,12 @@ export async function POST(request: Request) {
   }
   try {
     const result = await submitApplication(parsed);
-    if (!result.ok) return Response.json({ ok: false, error: result.error }, { status: result.status });
+    if (!result.ok) {
+      return Response.json(
+        { ok: false, error: result.error, outOfArea: result.outOfArea === true ? true : undefined },
+        { status: result.status },
+      );
+    }
     if (result.notices?.length) {
       const notices = result.notices;
       after(() => sendApplyNotices(notices));

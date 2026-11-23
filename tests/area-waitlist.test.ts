@@ -27,6 +27,7 @@ describe("out-of-area waitlist", () => {
     expect(tally).toBeGreaterThan(-1);
     expect(insert).toBeGreaterThan(tally);
     expect(apply).not.toContain("out_of_area_log");
+    expect(readFileSync("app/api/apply/route.ts", "utf8")).toContain("outOfArea: result.outOfArea");
     expect(apply).not.toContain("outOfAreaAdminEmail");
   });
 
