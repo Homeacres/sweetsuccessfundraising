@@ -1,11 +1,10 @@
-import { checkServiceArea, formatPostal } from "@/lib/area";
+import { formatPostal, matchPostalArea, OUT_OF_AREA_MESSAGE, type PostalArea } from "@/lib/area";
 import { prospectActionUrls, prospectReplyTo } from "@/lib/email/prospect";
-import { applyAdminRecipient, applyEmailsWillSend, deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
+import { applyEmailsWillSend, deliverApplyNotices, planApplicantNotices, type ApplyNotice } from "@/lib/apply-email";
 import { parseParticipantCount, resolveOrganizerSport, SPORT_LIST_ERROR, sportListUnavailable } from "@/lib/apply-sport";
 import { bagEstimate, type BagEstimate } from "@/lib/estimate";
 import { dollarsToCents } from "@/lib/money";
-import { listSports, serviceProvinces } from "@/lib/catalog";
-import { outOfAreaAdminEmail } from "@/lib/email/copy";
+import { listSports } from "@/lib/catalog";
 import { sendEmail } from "@/lib/email/send";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { cleanText, isEmail } from "@/lib/text";
@@ -104,40 +103,20 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
   );
   if (!resolvedSport.ok) return { ok: false, error: resolvedSport.error, status: 400 };
 
-  const provinces = await serviceProvinces();
-  const area = checkServiceArea(input.postal, provinces);
-  if (!area.ok && area.reason === "invalid") {
-    return { ok: false, error: "Enter a Canadian postal code.", status: 400 };
-  }
-
   const db = supabaseAdmin();
-
+  const { data: areaRows, error: areaError } = await db.from("postal_areas").select("prefix, country, is_active");
+  if (areaError) throw areaError;
+  const areas: PostalArea[] = (areaRows ?? []).flatMap((row) => {
+    if ((row.country !== "CA" && row.country !== "US") || typeof row.prefix !== "string") return [];
+    return [{ prefix: row.prefix, country: row.country, isActive: Boolean(row.is_active) }];
+  });
+  const area = matchPostalArea(input.postal, areas);
   if (!area.ok) {
-    const { error } = await db.from("out_of_area_log").insert({
-      first_name: input.firstName,
-      last_name: input.lastName,
-      email: input.email,
-      city: input.city || null,
-      province: area.province,
-      country: "CA",
-      sport: resolvedSport.sport,
-      form: "pilot_apply",
-    });
-    if (error) throw error;
-    const message = outOfAreaAdminEmail({
-      firstName: input.firstName,
-      lastName: input.lastName,
-      email: input.email,
-      city: input.city,
-      postal: formatPostal(area.postal),
-      province: area.province,
-      sport: resolvedSport.sport,
-    });
-    const adminTo = applyAdminRecipient(process.env);
-    const emailed = adminTo
-      ? await sendApplyNotices([{ to: adminTo, emailType: "apply_out_of_area", message }])
-      : false;
-    return { ok: true, outOfArea: true, emailed, summary: null, startUrl: null };
+    return {
+      ok: false,
+      error: area.reason === "invalid" ? "Enter a Canadian postal code." : OUT_OF_AREA_MESSAGE,
+      status: 400,
+    };
   }
 
   const { data: existing, error: existingError } = await db
@@ -163,7 +142,8 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     sport: resolvedSport.sport,
     city: input.city || null,
     province: area.province,
-    country: "CA",
+    country: area.country,
+    postal_code: area.postal,
     location_confirmed: false,
     participant_count_estimate: participants.count,
     fundraising_goal_estimate_cad: dollarsToCents(input.goalDollars),
