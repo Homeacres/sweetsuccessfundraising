@@ -9,10 +9,12 @@ import {
   IMPLIED_WAITLIST_CONSENT,
   WAITLIST_BODY,
   WAITLIST_RESULT_NOTE,
+  areaOpeningNotice,
   formatServedCode,
   postalFieldHint,
   waitlistHeadline,
 } from "@/lib/waitlist-copy";
+import { waitlistReplyTo } from "@/lib/out-of-area-mail";
 
 const areas: PostalArea[] = [
   { prefix: "T", country: "CA", isActive: true },
@@ -52,6 +54,7 @@ describe("out-of-area intake", () => {
     const store = memory();
     const result = await saveOutOfAreaInterest({
       email: "pat@example.com",
+      firstName: "Pat",
       postal: "T2P 1J9",
       areas,
       find: store.find,
@@ -73,6 +76,7 @@ describe("out-of-area intake", () => {
     const store = memory();
     const result = await saveOutOfAreaInterest({
       email: "Gus@Example.com",
+      firstName: "Gus",
       postal: "S7K 1A1",
       areas,
       find: store.find,
@@ -93,16 +97,24 @@ describe("out-of-area intake", () => {
     expect(store.sent[0].text).toContain(`/waitlist/unsubscribe/${"a".repeat(64)}`);
     expect(envelope.headers?.["List-Unsubscribe"]).toContain(`/api/waitlist/unsubscribe?token=${"a".repeat(64)}`);
     expect(envelope.headers?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
-    expect(store.sent[0].text).toContain(WAITLIST_BODY);
-    expect(store.sent[0].text).toContain("Sweet Success Fundraising Inc., [mailing address]");
+    expect(store.sent[0].subject).toBe("Thanks for checking with Sweet Success Fundraising");
+    expect(store.sent[0].text).toContain("Hi Gus,");
+    expect(store.sent[0].text).toContain("We don't serve postal code S7K 1A1 yet.");
+    expect(store.sent[0].text).toContain("Questions? Email hello@sweetsuccessfundraising.com");
+    expect(store.sent[0].text).toContain("[MAILING ADDRESS – Chris to pick]");
+    expect(store.sent[0].html).toContain(">Unsubscribe</a>");
+    expect(store.sent[0].headers["Reply-To"]).toBe("hello@sweetsuccessfundraising.com");
     expect(store.sent[0].text).not.toMatch(/skittles|jolly rancher|gummy/i);
-    expect(readFileSync("lib/waitlist-copy.ts", "utf8")).toContain("// COPY-PENDING-CORA");
+    expect(readFileSync("lib/waitlist-copy.ts", "utf8")).toContain("DRAFT copy, Chris sign-off needed before go-live");
+    expect(() => areaOpeningNotice()).toThrow(/not built/);
+    expect(() => waitlistReplyTo({ SSF_WAITLIST_REPLY_TO: "someone@gmail.com" })).toThrow(/personal Gmail/);
   });
 
   it("does not add a second row or email an unsubscribed address", async () => {
     const store = memory();
     await saveOutOfAreaInterest({
       email: "pat@example.com",
+      firstName: "Pat",
       postal: "S7K",
       areas,
       find: store.find,
@@ -113,6 +125,7 @@ describe("out-of-area intake", () => {
     });
     const again = await saveOutOfAreaInterest({
       email: "PAT@example.com",
+      firstName: "Pat",
       postal: "S7K",
       areas,
       find: store.find,
@@ -127,6 +140,7 @@ describe("out-of-area intake", () => {
     store.rows[0].unsubscribedAt = "2026-11-23T00:00:00Z";
     const blocked = await saveOutOfAreaInterest({
       email: "pat@example.com",
+      firstName: "Pat",
       postal: "S7K",
       areas,
       find: store.find,
@@ -155,9 +169,10 @@ describe("out-of-area intake", () => {
     expect(waitlistHeadline("s7k1a1")).toBe("Thanks for checking! We don't serve postal code S7K 1A1 yet.");
     expect(waitlistHeadline("<script>")).toBe("Thanks for checking! We don't serve postal code <SCRIPT> yet.");
     expect(escapeHtml("<script>")).toBe("&lt;script&gt;");
-    expect(outOfAreaMessage("<script>", `${origin}/waitlist/unsubscribe/${"b".repeat(32)}`).html).toContain("&lt;SCRIPT&gt;");
+    expect(outOfAreaMessage({ firstName: "", postal: "<script>", unsubscribeUrl: `${origin}/waitlist/unsubscribe/${"b".repeat(32)}` }).html).toContain("&lt;SCRIPT&gt;");
+    expect(outOfAreaMessage({ firstName: "", postal: "S7K", unsubscribeUrl: `${origin}/waitlist/unsubscribe/${"b".repeat(32)}` }).text).toContain("Hi there,");
     expect(postalFieldHint()).toBe("Currently serving Alberta groups only.");
-    expect(WAITLIST_RESULT_NOTE).toBe("We've emailed you and will let you know if we come to your area. You can unsubscribe anytime.");
+    expect(WAITLIST_RESULT_NOTE).toBe("We've emailed you, and we'll let you know if we start serving your area. You can unsubscribe anytime.");
     expect(WAITLIST_BODY.startsWith("Thanks for your interest.")).toBe(true);
     const form = readFileSync("components/ApplyForm.tsx", "utf8");
     expect(form.match(/role="alert"/g)).toHaveLength(1);

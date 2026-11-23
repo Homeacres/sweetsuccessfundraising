@@ -1,7 +1,16 @@
 import type { PostalArea } from "@/lib/area";
 import { appUrl } from "@/lib/env";
-import { IMPLIED_WAITLIST_CONSENT, outOfAreaTally, planOutOfAreaSave, waitlistEmailSubject, waitlistEmailText } from "@/lib/waitlist-copy";
+import { isPersonalGmail } from "@/lib/email/send";
+import { IMPLIED_WAITLIST_CONSENT, formatServedCode, outOfAreaTally, planOutOfAreaSave, waitlistEmailSubject, waitlistEmailText, waitlistGreeting } from "@/lib/waitlist-copy";
 import { waitlistUnsubscribeHeaders } from "@/lib/waitlist-headers";
+
+const PUBLIC_WAITLIST_REPLY_TO = "hello@sweetsuccessfundraising.com";
+
+export function waitlistReplyTo(env: Record<string, string | undefined> = process.env): string {
+  const value = (env.SSF_WAITLIST_REPLY_TO || PUBLIC_WAITLIST_REPLY_TO).trim();
+  if (!value || isPersonalGmail(value)) throw new Error("SSF_WAITLIST_REPLY_TO cannot be a personal Gmail");
+  return value;
+}
 
 export type SavedWaitlist = { token: string; unsubscribedAt: string | null };
 
@@ -13,26 +22,38 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function outOfAreaMessage(input: string, unsubscribeUrl: string): {
+export function outOfAreaMessage(input: { firstName: string; postal: string; unsubscribeUrl: string }, env: Record<string, string | undefined> = process.env): {
   subject: string;
   text: string;
   html: string;
   headers: Record<string, string>;
 } {
-  const text = waitlistEmailText(input, unsubscribeUrl);
-  const html = `<p>${escapeHtml(text).replace(/\n/g, "<br>")}</p>`;
-  const origin = unsubscribeUrl.slice(0, unsubscribeUrl.indexOf("/waitlist/unsubscribe/"));
-  const token = unsubscribeUrl.slice(unsubscribeUrl.lastIndexOf("/") + 1);
+  const text = waitlistEmailText(input);
+  const origin = input.unsubscribeUrl.slice(0, input.unsubscribeUrl.indexOf("/waitlist/unsubscribe/"));
+  const token = input.unsubscribeUrl.slice(input.unsubscribeUrl.lastIndexOf("/") + 1);
+  const html = [
+    `<p>${escapeHtml(waitlistGreeting(input.firstName))}</p>`,
+    `<p>${escapeHtml(`Thanks for asking about a fundraiser with Sweet Success. We don't serve postal code ${formatServedCode(input.postal)} yet.`)}</p>`,
+    "<p>We've added you to our list, and we'll email you if we start serving your area. You can unsubscribe anytime with the link below.</p>",
+    "<p>Questions? Email hello@sweetsuccessfundraising.com</p>",
+    "<p>Thanks,<br>The Sweet Success Family</p>",
+    "<p>Sweet Success Fundraising Inc. · [MAILING ADDRESS – Chris to pick] · [CONTACT EMAIL OR WEBSITE – Chris to pick]</p>",
+    `<p><a href="${escapeHtml(input.unsubscribeUrl)}">Unsubscribe</a></p>`,
+  ].join("");
   return {
-    subject: waitlistEmailSubject(input),
+    subject: waitlistEmailSubject(),
     text,
     html,
-    headers: waitlistUnsubscribeHeaders(origin, token),
+    headers: {
+      ...waitlistUnsubscribeHeaders(origin, token),
+      "Reply-To": waitlistReplyTo(env),
+    },
   };
 }
 
 export async function saveOutOfAreaInterest(input: {
   email: string;
+  firstName: string;
   postal: string;
   areas: PostalArea[];
   find: (email: string, country: "CA" | "US", prefix: string) => Promise<SavedWaitlist | null>;
@@ -60,7 +81,7 @@ export async function saveOutOfAreaInterest(input: {
   if (plan === "keep") return { emailed: false };
   const origin = input.origin || appUrl();
   const unsubscribeUrl = `${origin}/waitlist/unsubscribe/${row.token}`;
-  const message = outOfAreaMessage(input.postal, unsubscribeUrl);
+  const message = outOfAreaMessage({ firstName: input.firstName, postal: input.postal, unsubscribeUrl });
   await input.send({ to: email, ...message });
   return { emailed: true };
 }

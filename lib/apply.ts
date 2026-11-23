@@ -113,6 +113,7 @@ export async function submitApplication(input: ApplyInput): Promise<ApplyResult>
     if (area.reason === "invalid") return { ok: false, error: "Enter a Canadian postal code.", status: 400 };
     const saved = await saveOutOfAreaInterest({
       email: input.email,
+      firstName: input.firstName,
       postal: input.postal,
       areas,
       origin: undefined,

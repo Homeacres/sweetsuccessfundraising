@@ -26,18 +26,45 @@ export function waitlistHeadline(input: string): string {
   return `Thanks for checking! We don't serve postal code ${formatServedCode(input)} yet.`;
 }
 
-// COPY-PENDING-CORA
+// DRAFT copy, Chris sign-off needed before go-live
 export const WAITLIST_RESULT_NOTE =
-  "We've emailed you and will let you know if we come to your area. You can unsubscribe anytime.";
+  "We've emailed you, and we'll let you know if we start serving your area. You can unsubscribe anytime.";
 
-// COPY-PENDING-CORA
-export function waitlistEmailSubject(input: string): string {
-  return `We don't serve postal code ${formatServedCode(input)} yet`;
+// DRAFT copy, Chris sign-off needed before go-live
+// The only mail sent for an area_waitlist row in this build is this enquiry.
+// The only future send allowed is an area-opening notice. That notice is not built.
+export function areaOpeningNotice(): never {
+  throw new Error("Area-opening notice is not built");
 }
 
-// COPY-PENDING-CORA
-export function waitlistEmailText(input: string, unsubscribeUrl: string): string {
-  return `${waitlistHeadline(input)}\n\n${WAITLIST_BODY}\n\nWe'll let you know if we come to your area.\n\n${WAITLIST_SENDER}\n\nUnsubscribe: ${unsubscribeUrl}`;
+// DRAFT copy, Chris sign-off needed before go-live
+export function waitlistEmailSubject(): string {
+  return "Thanks for checking with Sweet Success Fundraising";
+}
+
+export function waitlistGreeting(firstName: string): string {
+  const name = firstName.trim();
+  return name ? `Hi ${name},` : "Hi there,";
+}
+
+// DRAFT copy, Chris sign-off needed before go-live
+export function waitlistEmailText(input: { firstName: string; postal: string; unsubscribeUrl: string }): string {
+  const code = formatServedCode(input.postal);
+  return [
+    waitlistGreeting(input.firstName),
+    "",
+    `Thanks for asking about a fundraiser with Sweet Success. We don't serve postal code ${code} yet.`,
+    "",
+    "We've added you to our list, and we'll email you if we start serving your area. You can unsubscribe anytime with the link below.",
+    "",
+    "Questions? Email hello@sweetsuccessfundraising.com",
+    "",
+    "Thanks,",
+    "The Sweet Success Family",
+    "",
+    "Sweet Success Fundraising Inc. · [MAILING ADDRESS – Chris to pick] · [CONTACT EMAIL OR WEBSITE – Chris to pick]",
+    `Unsubscribe: ${input.unsubscribeUrl}`,
+  ].join("\n");
 }
 
 export type WaitlistRowState = { unsubscribedAt: string | null; token: string } | null;
