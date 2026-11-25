@@ -217,8 +217,10 @@ textarea { min-height: 88px; }
 .qty-line { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding-top: 8px; min-width: 0; max-width: 100%; }
 .qty-line > div, .cart-line > div { min-width: 0; }
 .copy-link { display: grid; gap: 8px; min-width: 0; max-width: 100%; margin-top: 8px; }
+.copy-link > div { min-width: 0; max-width: 100%; overflow: hidden; }
 .copy-link .btn { width: auto; justify-self: start; }
-.copy-url { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; display: block; }
+.copy-url { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; min-width: 0; display: block; }
+.page, .card { overflow-x: clip; }
 .panel input, .panel select, .panel textarea { width: 100%; min-width: 0; box-sizing: border-box; }
 .board-wrap { overflow-x: hidden; max-width: 100%; }
 .board-wrap table { width: 100%; table-layout: fixed; }

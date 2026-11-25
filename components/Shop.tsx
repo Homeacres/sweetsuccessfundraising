@@ -209,7 +209,7 @@ export function Shop(props: {
       {props.orderTarget?.kind === "supporter" ? (
         <div className="support-switch">
           <div className="support-current">
-            <p>Your player: {supportedFirstName}</p>
+            <p>Your player: {selectedPlayer?.name || supportedFirstName}</p>
             <button type="button" aria-expanded={playersOpen} aria-controls="support-players" onClick={() => setPlayersOpen((open) => !open)}>
               Change player
             </button>

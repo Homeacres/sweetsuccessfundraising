@@ -2,11 +2,11 @@ import { TeamDashboardView } from "@/components/FlowScreens";
 import { todayInEdmonton, formatUserDate } from "@/lib/dates";
 import { appUrl, supabaseConfigured } from "@/lib/env";
 import { shopPhase } from "@/lib/launch";
-import { formatQuoteGoal } from "@/lib/email/prospect";
 import { organizerActionSecret, verifyOrganizerAction } from "@/lib/organizer-token";
 import { supporterShopPath } from "@/lib/roster";
 import { loadStarLines } from "@/lib/flow-run";
-import { goalPercent, type Seller } from "@/lib/standings";
+import { playerDisplayName } from "@/lib/names";
+import { goalProgressLine, type Seller } from "@/lib/standings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Team dashboard", robots: { index: false, follow: false } };
@@ -37,12 +37,11 @@ export default async function DashboardPage({ params }: { params: Promise<{ toke
       phase={viewPhase}
       startLabel={formatUserDate(campaign.start_date) || "Not set"}
       endLabel={formatUserDate(campaign.end_date) || "Not set"}
-      goal={formatQuoteGoal((campaign.goal_cad || 0) / 100)}
-      goalPct={goalPercent(campaign.team_raised_cents || 0, campaign.goal_cad || 0)}
+      progress={goalProgressLine(campaign.team_raised_cents || 0, campaign.goal_cad || 0)}
       periodStars={stars.period}
       overallStars={stars.overall}
       roster={(people ?? []).map((person) => ({
-        name: `${person.player_first_name} ${String(person.player_last_name || "").slice(0, 1)}`,
+        name: playerDisplayName(person.player_first_name, person.player_last_name, true),
         href: person.share_token ? `${appUrl()}${supporterShopPath(person.share_token)}` : "",
       }))}
     />

@@ -78,12 +78,25 @@ export function AcceptWindow(props: { team: string; windowLabel: string; token: 
   return (
     <main className="page wrap">
       <div className="card" style={{ maxWidth: 560 }}>
-        <h1>Take {props.windowLabel}</h1>
-        <p>Accept this window and {props.team} is approved.</p>
+        <h1>Confirm {props.windowLabel}</h1>
+        <p>If {props.windowLabel} works for {props.team}, confirm it below. That approves your fundraiser. Nothing goes on sale before your start date.</p>
+        <p>After you confirm, we'll take you to your team dashboard.</p>
         <form method="post" action="/api/o/window">
           <input type="hidden" name="token" value={props.token} />
-          <button className="btn btn-navy" type="submit" name="choice" value="accept">Take {props.windowLabel}</button>
+          <button className="btn btn-navy" type="submit" name="choice" value="accept">Confirm {props.windowLabel}</button>
         </form>
+      </div>
+    </main>
+  );
+}
+
+export function ApprovedWindow(props: { team: string; windowLabel: string; dashboardHref: string }) {
+  return (
+    <main className="page wrap">
+      <div className="card" style={{ maxWidth: 560 }}>
+        <h1>{props.team} is approved</h1>
+        <p>Your fundraiser is confirmed for {props.windowLabel}. Nothing goes on sale before your start date.</p>
+        <p><a className="btn btn-navy" href={props.dashboardHref}>Open your team dashboard</a></p>
       </div>
     </main>
   );
@@ -150,8 +163,7 @@ export function TeamDashboardView(props: {
   phase: "before" | "open" | "after";
   startLabel: string;
   endLabel: string;
-  goal: string;
-  goalPct: number;
+  progress: string;
   periodStars: string[];
   overallStars: string[];
   roster: { name: string; href: string }[];
@@ -170,7 +182,7 @@ export function TeamDashboardView(props: {
       <p className="kicker">Team dashboard</p>
       <h1>{props.team}</h1>
       <p>{props.startLabel} to {props.endLabel}</p>
-      <p>Goal {props.goal}. {props.phase === "open" || props.phase === "after" ? `${props.goalPct}% of the goal.` : "Selling has not started."}</p>
+      <p>{props.phase === "open" || props.phase === "after" ? props.progress : "Selling has not started."}</p>
       <ul className="prices">
         {stages.map((stage) => <li key={stage.id}><strong>{stage.label}</strong> · {stage.state}</li>)}
       </ul>

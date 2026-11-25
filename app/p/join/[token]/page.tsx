@@ -2,6 +2,7 @@ import { ParentSignupDone, ParentSignupForm } from "@/components/FlowScreens";
 import { CopyLink } from "@/components/CopyLink";
 import { appUrl, supabaseConfigured } from "@/lib/env";
 import { organizerActionSecret, verifyOrganizerAction } from "@/lib/organizer-token";
+import { playerDisplayName } from "@/lib/names";
 import { supporterShopPath } from "@/lib/roster";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -25,7 +26,7 @@ export default async function JoinPage({ params, searchParams }: { params: Promi
     if (query.done && row?.team_slug) {
       const { data: people } = await db.from("campaign_participants").select("player_first_name, player_last_name, share_token").eq("campaign_id", row.campaign_id);
       links = (people ?? []).flatMap((person) => person.share_token ? [{
-        name: `${person.player_first_name} ${person.player_last_name}`,
+        name: playerDisplayName(person.player_first_name, person.player_last_name, true),
         href: `${appUrl()}${supporterShopPath(person.share_token)}`,
       }] : []);
     }

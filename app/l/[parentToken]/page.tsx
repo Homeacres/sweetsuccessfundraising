@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { appUrl, supabaseConfigured } from "@/lib/env";
 import { isUnguessableToken } from "@/lib/ledger-rules";
-import { formatTeamCad } from "@/lib/money";
 import { playerDisplayName } from "@/lib/names";
 import { supporterShopPath } from "@/lib/roster";
-import { goalPercent, type Seller } from "@/lib/standings";
+import { goalPercent, goalProgressLine, type Seller } from "@/lib/standings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -49,7 +48,7 @@ export default async function LeaderboardPage({ params }: { params: Promise<{ pa
     <main className="page wrap">
       <p className="kicker">Private leaderboard</p>
       <h1>{campaign.campaign_name}</h1>
-      <p>{formatTeamCad(campaign.team_raised_cents)} raised ({pct}% of the {formatTeamCad(campaign.goal_cad)} goal).</p>
+      <p>{goalProgressLine(campaign.team_raised_cents, campaign.goal_cad, pct)}</p>
       <p>
         <Link href={`/p/ledger/${parentToken}`}>Parent ledger</Link>
         {shareHref ? <> · <a href={shareHref}>Link to share with supporters</a></> : null}

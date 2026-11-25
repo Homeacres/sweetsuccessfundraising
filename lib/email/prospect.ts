@@ -213,16 +213,24 @@ export function rosterDraftEmail(input: { firstName: string; teamName: string; r
   const preview = "Families sign up, and each participant gets a link to share.";
   const text = `Hi ${input.firstName},
 
-${input.teamName} is approved. Add participant names and copy each share link.
+${input.teamName} is approved. Families sign up their own participants, and each one gets a link to share with supporters.
 
-Open the roster: ${input.rosterUrl}
+Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.
+
+Open the roster to copy those links as they come in:
+${input.rosterUrl}
+
+Questions? Email hello@sweetsuccessfundraising.com.
 
 Thanks,
 ${SIGN_OFF_NAME}
 Unsubscribe: ${input.unsubscribeUrl}`;
   const html = `<p>Hi ${escapeHtml(input.firstName)},</p>
-<p>${escapeHtml(input.teamName)} is approved. Add participant names and copy each share link.</p>
+<p>${escapeHtml(input.teamName)} is approved. Families sign up their own participants, and each one gets a link to share with supporters.</p>
+<p>Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.</p>
+<p>Open the roster to copy those links as they come in:</p>
 <p><a href="${escapeHtml(input.rosterUrl)}">Open the roster</a></p>
+<p>Questions? <a href="mailto:hello@sweetsuccessfundraising.com">Email hello@sweetsuccessfundraising.com</a></p>
 <p>Thanks,<br>${escapeHtml(SIGN_OFF_NAME)}</p>
 <p><a href="${escapeHtml(input.unsubscribeUrl)}">Unsubscribe</a></p>`;
   const wrapped = wrap(preview, html, text);

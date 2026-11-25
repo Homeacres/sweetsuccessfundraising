@@ -105,7 +105,10 @@ describe("flow email shell and roster", () => {
       roster,
     ];
     expect(pack).toHaveLength(3);
+    expect(roster.text).toContain("Families sign up their own participants, and each one gets a link to share with supporters.");
+    expect(roster.text).toContain("Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.");
     expect(roster.text).toContain("Unsubscribe: https://example.invalid/unsubscribe");
+    expect(roster.text).not.toContain("Add participant names");
     expect(roster.html).toContain('href="https://example.invalid/unsubscribe"');
     expect(`${roster.subject}\n${roster.preview}\n${roster.text}\n${roster.html}`).not.toContain("DRAFT");
     const source = readFileSync("lib/flow-mail.ts", "utf8");

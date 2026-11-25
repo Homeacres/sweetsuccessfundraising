@@ -41,8 +41,11 @@ export default async function SuccessPage({ searchParams }: { searchParams: Prom
       <h1>Thank you</h1>
       {summary ? (
         <>
-          <p>Thanks for supporting {summary.team}.</p>
-          <p>[NEEDS CORA: participant credit line] {summary.participant}</p>
+          <p>
+            {summary.participant
+              ? `Thanks! Your order counts toward ${summary.participant}'s total for ${summary.team}.`
+              : `Thanks for supporting ${summary.team}.`}
+          </p>
           <p>
             {summary.status === "paid" ? "Payment received." : "We're confirming the payment."}{" "}
             {bagCount(summary.bags)} · {formatCad(summary.total)}.

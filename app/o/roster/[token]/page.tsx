@@ -1,6 +1,7 @@
 import { CopyLink } from "@/components/CopyLink";
 import { appUrl, supabaseConfigured } from "@/lib/env";
 import { organizerActionSecret, signOrganizerAction, verifyOrganizerAction } from "@/lib/organizer-token";
+import { playerDisplayName } from "@/lib/names";
 import { supporterShopPath } from "@/lib/roster";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
@@ -54,7 +55,7 @@ export default async function RosterPage({ params }: { params: Promise<{ token: 
         {(people ?? []).filter((person) => person.share_token).map((person) => (
           <CopyLink
             key={person.share_token}
-            label={`${person.player_first_name} ${person.player_last_name}`}
+            label={playerDisplayName(person.player_first_name, person.player_last_name, true)}
             href={`${origin}${supporterShopPath(person.share_token)}`}
           />
         ))}

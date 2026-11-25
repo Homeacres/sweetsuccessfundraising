@@ -10,6 +10,7 @@ import {
   type LiveLinks,
 } from "@/lib/email/flow-copy";
 import { formatQuoteGoal, prospectActionUrls } from "@/lib/email/prospect";
+import { playerDisplayName } from "@/lib/names";
 import { appUrl } from "@/lib/env";
 import { sendFlowEmail, sendParked } from "@/lib/flow-mail";
 import { countdownKind, daysUntil, liveMailKind, shopPhase, waitlistDue, type LiveMailKind } from "@/lib/launch";
@@ -223,7 +224,7 @@ export function recipientsFor(
     };
     if (isUnguessableToken(person.share_token)) {
       current.supporterLinks.push({
-        name: `${person.player_first_name} ${String(person.player_last_name || "").slice(0, 1)}`.trim(),
+        name: playerDisplayName(person.player_first_name, person.player_last_name, true),
         url: `${appUrl()}${supporterShopPath(person.share_token)}`,
       });
     }

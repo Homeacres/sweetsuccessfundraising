@@ -7,13 +7,13 @@ const ben = "cdce878d-b494-49ec-8004-91d544d5cf5b";
 const otherTeam = "a250ecc9-b2f4-409f-8b32-19d1f5d2d4ec";
 
 describe("supporter shop player switch", () => {
-  it("uses a first name, and a last initial only when two first names clash", () => {
+  it("shows a first name and last initial with a period", () => {
     expect(supporterPlayerLabels([
       { id: "1", first: "Sam", last: "Lee" },
       { id: "2", first: "Sam", last: "Kim" },
       { id: "3", first: "Ava", last: "Oak" },
     ])).toEqual([
-      { id: "3", firstName: "Ava", label: "Ava" },
+      { id: "3", firstName: "Ava", label: "Ava O." },
       { id: "2", firstName: "Sam", label: "Sam K." },
       { id: "1", firstName: "Sam", label: "Sam L." },
     ]);
