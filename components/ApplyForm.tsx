@@ -7,7 +7,7 @@ import { OTHER_SPORT, SPORT_LIST_ERROR, type SportChoice } from "@/lib/apply-spo
 import { CASL_CONSENT_TEXT } from "@/lib/consent";
 import { type BagEstimate } from "@/lib/estimate";
 import { formatQuoteGoal, TEAM_KEEP_ABOUT } from "@/lib/quote-copy";
-import { WAITLIST_BODY, WAITLIST_CONTACT_EMAIL, WAITLIST_CONTACT_NAME, WAITLIST_CONTACT_SITE, WAITLIST_CONTACT_SITE_URL, WAITLIST_MAILING_ADDRESS, WAITLIST_RESULT_NOTE, postalFieldHint, waitlistHeadline } from "@/lib/waitlist-copy";
+import { WAITLIST_CONTACT_EMAIL, WAITLIST_CONTACT_NAME, WAITLIST_CONTACT_SITE, WAITLIST_CONTACT_SITE_URL, WAITLIST_MAILING_ADDRESS, WAITLIST_RESULT_NOTE, postalFieldHint, waitlistHeadline } from "@/lib/waitlist-copy";
 
 const HEARD = [
   "Coach or team manager",
@@ -87,7 +87,7 @@ export function ApplyConfirmation({
           {each ? ` That's about ${each} bags per participant.` : ""}
         </p>
       ) : null}
-      <p>Your group makes $5 or more on every bag sold. That's at least 40% of every sale.</p>
+      <p>Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.</p>
       <p>We've emailed a copy of this quote to {email}.</p>
       <p className="fine">These are estimates. Nothing has started yet.</p>
       <h3>Ready when you are</h3>
@@ -283,7 +283,6 @@ export function ApplyForm({ sports, sportsError }: { sports: SportChoice[]; spor
       <div className="card" id="apply">
         <div className="area-alert" id="out-of-area" ref={alertRef} tabIndex={-1} role="alert">
           <h2>{waitlistHeadline(awayCode)}</h2>
-          <p>{WAITLIST_BODY}</p>
           <p>{WAITLIST_RESULT_NOTE}</p>
           <p>
             {WAITLIST_CONTACT_NAME}

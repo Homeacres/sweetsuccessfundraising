@@ -125,7 +125,7 @@ describe("organizer share copy", () => {
     const form = readFileSync("components/ApplyForm.tsx", "utf8");
     const shop = readFileSync("components/Shop.tsx", "utf8");
     const quote = onPageQuote({ goal: "$2,000", bags: "400", bagsEach: "20" }).join("\n");
-    expect(TEAM_KEEP_ABOUT).toBe("Groups keep at least 40% of every sale.");
+    expect(TEAM_KEEP_ABOUT).toBe("Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.");
     expect(form).toContain("Calculate your fundraiser");
     expect(form).toContain("See my estimate");
     expect(form).not.toContain("Apply to run");
@@ -139,7 +139,7 @@ describe("organizer share copy", () => {
     expect(shop).not.toContain("team keeps");
     expect(quote).toContain(TEAM_KEEP_ABOUT);
     expect(quote).not.toContain("round dollar");
-    expect(quote).not.toContain("keeps $5");
+    expect(quote).toContain("keeps $5 on every bag");
     expect(formatQuoteGoal(2000.4)).toBe(formatTeamCad(200000));
     expect(formatQuoteGoal(2000.6)).toBe(formatTeamCad(200100));
     expect(formatTeamCad(149)).toBe(formatTeamCad(100));
@@ -198,7 +198,7 @@ describe("apply email", () => {
     const quotePage = confirmation.slice(confirmation.indexOf("export function ApplyConfirmation"), confirmation.indexOf("export function ApplyForm"));
     expect(quotePage).toContain("Nothing has started yet.");
     expect(quotePage).toContain("That's about ${each} bags per participant.");
-    expect(quotePage).toContain("Your group makes $5 or more on every bag sold. That's at least 40% of every sale.");
+    expect(quotePage).toContain("Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.");
     expect(quotePage).toContain("mailto:hello@sweetsuccessfundraising.com");
     expect(quotePage).toContain("Not ready yet? Questions? ");
     expect(quotePage).not.toContain("reply to the quote email");

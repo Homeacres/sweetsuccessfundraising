@@ -139,7 +139,9 @@ describe("parent ledger", () => {
     expect(combined).toContain("on behalf of");
     expect(combined).toContain("Hawks");
     expect(combined).toContain("Celly Crunches");
-    expect(combined).toContain("GST included");
+    expect(combined).toContain("Includes GST (5%)");
+    expect(combined).toContain("Sweet Success Fundraising Inc.");
+    expect(combined).not.toContain("GST number:");
     expect(combined).toContain(`/r/${RECEIPT}`);
     expect(combined).not.toContain(PARENT);
   });
@@ -326,7 +328,8 @@ describe("parent ledger", () => {
       expect(source).toContain("isUnguessableToken");
     }
     expect(board).toContain("fn_parent_from_token");
-    expect(board).not.toContain("share_token");
+    expect(board).not.toContain("fn_shop_from_share_token");
+    expect(board).not.toContain(".eq(\"share_token\"");
     expect(migration).toContain("cp.parent_token = p_token");
     expect(migration).toContain("cp.share_token is distinct from p_token");
   });

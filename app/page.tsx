@@ -112,7 +112,7 @@ export default async function HomePage() {
           <div className="grid-3" style={{ marginTop: 28 }}>
             <article className="panel">
               <h3>Nothing to pay up front.</h3>
-              <p>No upfront cost and no minimum order. Start with what your group needs.</p>
+              <p>No upfront cost. [NEEDS CHRIS'S SHIPPING-MINIMUM WORDING]</p>
             </article>
             <article className="panel">
               <h3>Easy payments.</h3>
@@ -123,7 +123,7 @@ export default async function HomePage() {
               <p>We make your whole order and deliver it to your organizer, ready to hand out.</p>
             </article>
           </div>
-          <p style={{ marginTop: 28 }}>Your group makes $5 or more on every bag (at least 40% of every sale), and you can watch progress live.</p>
+          <p style={{ marginTop: 28 }}>Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale, and you can watch progress live.</p>
           <p style={{ marginTop: 16 }}><a className="btn btn-gold" href="#apply">Calculate your fundraiser</a></p>
         </div>
       </section>

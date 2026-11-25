@@ -1,6 +1,6 @@
 import { buyerContactError, isNorthAmericanPhone, type PaymentMethod } from "@/lib/buyer";
 import { bundlePickError, type BundlePick } from "@/lib/bundles";
-import { shopBundles } from "@/lib/catalog";
+import { pilotCheckoutRejection, shopBundles } from "@/lib/catalog";
 import { splitBundleCents } from "@/lib/bundles";
 import { todayInEdmonton } from "@/lib/dates";
 import { appUrl } from "@/lib/env";
@@ -309,13 +309,19 @@ async function finishOrder(input: {
   const bagIds = [...new Set([...normalized.map((line) => line.bagTypeId), ...bundlePicks.map((pick) => pick.bagTypeId)].filter(Boolean))];
   const [productsRes, bagsRes] = await Promise.all([
     db.from("products").select("product_id").eq("is_active", true).in("product_id", productIds),
-    db.from("bag_types").select("bag_type_id").eq("is_active", true).in("bag_type_id", bagIds),
+    db.from("bag_types").select("bag_type_id, code").eq("is_active", true).in("bag_type_id", bagIds),
   ]);
   if (productsRes.error) throw productsRes.error;
   if (bagsRes.error) throw bagsRes.error;
-  if ((productsRes.data ?? []).length !== productIds.length || (bagsRes.data ?? []).length !== bagIds.length) {
+  const bagRows = bagsRes.data ?? [];
+  if ((productsRes.data ?? []).length !== productIds.length || bagRows.length !== bagIds.length) {
     return { ok: false, error: "One of those candies is no longer for sale.", status: 400 };
   }
+  const pilotBlock = pilotCheckoutRejection({
+    bagCodes: bagRows.map((bag) => String(bag.code || "")),
+    bundleRequested: Boolean(incomingBundle?.offerId),
+  });
+  if (pilotBlock) return { ok: false, error: pilotBlock, status: 400 };
 
   const singleRows: PricedRow[] = [];
   if (normalized.length) {

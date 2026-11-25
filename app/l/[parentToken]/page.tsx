@@ -1,7 +1,10 @@
-import { supabaseConfigured } from "@/lib/env";
+import Link from "next/link";
+import { appUrl, supabaseConfigured } from "@/lib/env";
 import { isUnguessableToken } from "@/lib/ledger-rules";
+import { formatTeamCad } from "@/lib/money";
 import { playerDisplayName } from "@/lib/names";
-import { goalPercent, starSellers, type Seller } from "@/lib/standings";
+import { supporterShopPath } from "@/lib/roster";
+import { goalPercent, type Seller } from "@/lib/standings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +27,7 @@ export default async function LeaderboardPage({ params }: { params: Promise<{ pa
   if (!campaign) return <Invalid />;
   const { data: people, error } = await db
     .from("campaign_participants")
-    .select("cp_id, player_first_name, player_last_name, bags_sold, leaderboard_opt_in")
+    .select("cp_id, player_first_name, player_last_name, bags_sold, leaderboard_opt_in, share_token")
     .eq("campaign_id", me.campaign_id);
   if (error || !people) return <Invalid />;
   const sellers: Seller[] = people.map((person) => ({
@@ -34,16 +37,24 @@ export default async function LeaderboardPage({ params }: { params: Promise<{ pa
     bags: person.bags_sold,
     optedIn: Boolean(person.leaderboard_opt_in),
   }));
-  const ranked = sellers.filter((person) => person.optedIn && person.bags > 0).sort((a, b) => b.bags - a.bags);
+  const ranked = sellers.filter((person) => person.optedIn && person.bags > 0);
+  const viewer = sellers.find((person) => person.id === me.cp_id);
+  if (viewer && !ranked.some((person) => person.id === viewer.id)) ranked.push(viewer);
+  ranked.sort((a, b) => b.bags - a.bags);
   const pct = goalPercent(campaign.team_raised_cents, campaign.goal_cad);
+  const mine = people.find((person) => person.cp_id === me.cp_id);
+  const shareHref = mine?.share_token ? `${appUrl()}${supporterShopPath(mine.share_token)}` : null;
 
   return (
     <main className="page wrap">
       <p className="kicker">Private leaderboard</p>
       <h1>{campaign.campaign_name}</h1>
-      <p className="muted">{pct}% of the goal.</p>
-      <p>{starSellers(sellers).join(", ") || "No star sellers yet."}</p>
-      <div className="table-wrap">
+      <p>{formatTeamCad(campaign.team_raised_cents)} raised ({pct}% of the {formatTeamCad(campaign.goal_cad)} goal).</p>
+      <p>
+        <Link href={`/p/ledger/${parentToken}`}>Parent ledger</Link>
+        {shareHref ? <> · <a href={shareHref}>Link to share with supporters</a></> : null}
+      </p>
+      <div className="table-wrap board-wrap">
         <table>
           <thead>
             <tr><th>Rank</th><th>Participant</th><th>Bags</th></tr>

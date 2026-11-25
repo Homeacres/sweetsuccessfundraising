@@ -1,4 +1,22 @@
 import { productPhotoForSort, type ProductPhoto } from "@/components/product-photos";
+
+/** Pilot sells single standard bags. Premium stays in the database and is filtered here. */
+export const PILOT_BAG_CODES = ["standard"] as const;
+export const PILOT_BUNDLES_ENABLED = false;
+
+export function pilotSellableBag(code: string): boolean {
+  return (PILOT_BAG_CODES as readonly string[]).includes(code);
+}
+
+export function pilotBundleOffers<T>(offers: T[]): T[] {
+  return PILOT_BUNDLES_ENABLED ? offers : [];
+}
+
+export function pilotCheckoutRejection(input: { bagCodes: string[]; bundleRequested: boolean }): string | null {
+  if (input.bagCodes.some((code) => !pilotSellableBag(code))) return "One of those candies is no longer for sale.";
+  if (input.bundleRequested && !PILOT_BUNDLES_ENABLED) return "That pack is not for sale.";
+  return null;
+}
 import { visibleBundleOffers, type BundleOffer } from "@/lib/bundles";
 import { applySportOptions, OTHER_SPORT, type SportCatalogRow } from "@/lib/apply-sport";
 import { jsonbInt } from "@/lib/money";
@@ -29,12 +47,14 @@ export async function publicBagPrices(): Promise<PublicBagPrice[]> {
   if (bagsRes.error) throw bagsRes.error;
   if (tiersRes.error) throw tiersRes.error;
   const unit = new Map((tiersRes.data ?? []).map((tier) => [tier.bag_type_id, tier.price_cents]));
-  return (bagsRes.data ?? []).map((bag) => ({
-    code: bag.code,
-    name: bag.name,
-    priceCents: unit.get(bag.bag_type_id) ?? bag.retail_price_cents,
-    teamShareCents: bag.team_share_cents,
-  }));
+  return (bagsRes.data ?? [])
+    .filter((bag) => pilotSellableBag(bag.code))
+    .map((bag) => ({
+      code: bag.code,
+      name: bag.name,
+      priceCents: unit.get(bag.bag_type_id) ?? bag.retail_price_cents,
+      teamShareCents: bag.team_share_cents,
+    }));
 }
 
 const SPORT_TTL_MS = 60_000;
@@ -179,20 +199,25 @@ export async function shopCatalog(sportName: string): Promise<ShopCatalog> {
     photo: productPhotoForSort(product.sort_order),
   }));
 
-  const bags: ShopBag[] = (bagsRes.data ?? []).map((bag) => ({
-    bagTypeId: bag.bag_type_id,
-    code: bag.code,
-    name: bag.name,
-    retailPriceCents: bag.retail_price_cents,
-    teamShareCents: bag.team_share_cents,
-  }));
+  const bags: ShopBag[] = (bagsRes.data ?? [])
+    .filter((bag) => pilotSellableBag(bag.code))
+    .map((bag) => ({
+      bagTypeId: bag.bag_type_id,
+      code: bag.code,
+      name: bag.name,
+      retailPriceCents: bag.retail_price_cents,
+      teamShareCents: bag.team_share_cents,
+    }));
+  const bagIds = new Set(bags.map((bag) => bag.bagTypeId));
 
-  const tiers: TierRow[] = (tiersRes.data ?? []).map((tier) => ({
-    bagTypeId: tier.bag_type_id,
-    qty: tier.qty,
-    priceCents: tier.price_cents,
-    active: true,
-  }));
+  const tiers: TierRow[] = (tiersRes.data ?? [])
+    .filter((tier) => bagIds.has(tier.bag_type_id))
+    .map((tier) => ({
+      bagTypeId: tier.bag_type_id,
+      qty: tier.qty,
+      priceCents: tier.price_cents,
+      active: true,
+    }));
 
   const bagRows: BagRow[] = bags.map((bag) => ({
     bagTypeId: bag.bagTypeId,
@@ -232,5 +257,5 @@ export async function shopBundles(): Promise<BundleOffer[]> {
     isTest: row.is_test,
     sortOrder: row.sort_order,
   }));
-  return visibleBundleOffers(offers);
+  return pilotBundleOffers(visibleBundleOffers(offers));
 }

@@ -1,6 +1,8 @@
 import { formatUserDate } from "@/lib/dates";
 import { appUrl } from "@/lib/env";
+import { receiptMoneyLines } from "@/lib/gst";
 import { formatCad } from "@/lib/money";
+import { bagCount } from "@/lib/text";
 
 export type CashReceiptLine = { label: string; qty: number; amountCents: number };
 
@@ -13,6 +15,7 @@ export type CashReceiptInput = {
   receivedAt: string | null;
   lines: CashReceiptLine[];
   receiptToken: string;
+  env?: Record<string, string | undefined>;
 };
 
 /** JSON false, or a JSON boolean stored as false. Only an explicit true sends. */
@@ -55,9 +58,9 @@ export function cashReceiptCopy(input: CashReceiptInput): { subject: string; htm
     `Buyer: ${input.buyerName}`,
     lineText,
     "",
-    `Total: ${formatCad(input.totalCents)} for ${input.bags} bag${input.bags === 1 ? "" : "s"}.`,
+    ...receiptMoneyLines(input.totalCents, input.env),
+    bagCount(input.bags),
     when ? `Received: ${when}.` : "",
-    "GST included.",
     "",
     `Receipt: ${cashReceiptUrl(input.receiptToken)}`,
   ]
@@ -72,9 +75,9 @@ export function cashReceiptCopy(input: CashReceiptInput): { subject: string; htm
   const html = `<p><strong>${escapeHtml(who)}</strong> received this payment on behalf of <strong>${escapeHtml(input.team)}</strong>.</p>
 <p>Buyer: ${escapeHtml(input.buyerName)}</p>
 <ul>${items}</ul>
-<p><strong>Total ${formatCad(input.totalCents)}</strong> · ${input.bags} bag${input.bags === 1 ? "" : "s"}</p>
-${when ? `<p>Received ${escapeHtml(when)}.</p>` : ""}
-<p>GST included.</p>`;
+${receiptMoneyLines(input.totalCents, input.env).map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
+<p>${escapeHtml(bagCount(input.bags))}</p>
+${when ? `<p>Received ${escapeHtml(when)}.</p>` : ""}`;
   return { subject: `Cash receipt: ${input.team}`, html, text };
 }
 

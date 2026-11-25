@@ -4,10 +4,11 @@ import { useMemo, useRef, useState } from "react";
 import { ProductPhotoView } from "@/components/ProductPhoto";
 import type { ProductPhoto } from "@/components/product-photos";
 import { buyerContactError, type PaymentMethod } from "@/lib/buyer";
-import { mixPackLines, normalizeCartLines } from "@/lib/cart";
+import { normalizeCartLines } from "@/lib/cart";
 import { formatUserDate } from "@/lib/dates";
 import { formatCad, formatTeamCad } from "@/lib/money";
 import { cartCandyLine } from "@/lib/public-names";
+import { bagCount } from "@/lib/text";
 import {
   cartTotals,
   hasMultiBagTiers,
@@ -88,15 +89,6 @@ export function Shop(props: {
   const bundleOffer = bundle ? props.bundles.find((offer) => offer.offerId === bundle.offerId) ?? null : null;
   const displayCents = (priced.lines.length ? totals.grossCents : 0) + (bundleOffer?.priceCents ?? 0);
   const displayBags = (priced.lines.length ? totals.bags : 0) + (bundleOffer?.bagCount ?? 0);
-  const mixQuote = useMemo(() => {
-    if (!props.standardBagTypeId || !playerId || props.products.length === 0) return null;
-    try {
-      const mix = mixPackLines(playerId, props.products.map((product) => product.productId), props.standardBagTypeId, 1);
-      return cartTotals(priceCart(normalizeCartLines(mix), props.tiers, props.bagRows, 1));
-    } catch {
-      return null;
-    }
-  }, [playerId, props.products, props.standardBagTypeId, props.tiers, props.bagRows]);
 
   const showLadder = hasMultiBagTiers(props.tiers);
   const percent = props.goalCents > 0 ? Math.min(100, Math.round((props.raisedCents / props.goalCents) * 100)) : 0;
@@ -131,30 +123,6 @@ export function Shop(props: {
       const rest = current.filter((line) => !(line.cpId === playerId && line.productId === productId && line.bagTypeId === bagTypeId));
       if (nextQty <= 0) return rest;
       return [...rest, { cpId: playerId, productId, bagTypeId, qty: nextQty, fromMixPack: false }];
-    });
-  }
-
-  function addMix() {
-    const standardBagTypeId = props.standardBagTypeId;
-    if (!standardBagTypeId || !playerId) return;
-    setLines((current) => {
-      const next = [...current];
-      for (const product of props.products) {
-        const index = next.findIndex(
-          (line) => line.cpId === playerId && line.productId === product.productId && line.bagTypeId === standardBagTypeId,
-        );
-        if (index >= 0) next[index] = { ...next[index], qty: next[index].qty + 1, fromMixPack: true };
-        else {
-          next.push({
-            cpId: playerId,
-            productId: product.productId,
-            bagTypeId: standardBagTypeId,
-            qty: 1,
-            fromMixPack: true,
-          });
-        }
-      }
-      return next;
     });
   }
 
@@ -282,7 +250,7 @@ export function Shop(props: {
               <article className="panel" key={offer.offerId}>
                 <h3>{offer.label}</h3>
                 {offer.isTest ? <p className="fine">TEST pricing</p> : null}
-                <p>{offer.bagCount} bags · {formatCad(offer.priceCents)}</p>
+                <p>{bagCount(offer.bagCount)} · {formatCad(offer.priceCents)}</p>
                 <p className="muted">pick any {offer.bagCount} standard bags</p>
                 <button className="btn btn-navy" type="button" disabled={!canOrder || !playerId} onClick={() => { setOpenOfferId(offer.offerId); setDraftPicks({}); }}>
                   Choose bags
@@ -349,13 +317,6 @@ export function Shop(props: {
               })}
             </article>
           ))}
-          {props.standardBagTypeId && props.products.length > 0 && (
-            <article className="panel">
-              <h3>Mix pack</h3>
-              <p className="muted">One of each candy for this participant. {mixQuote ? `${mixQuote.bags} bags · ${formatCad(mixQuote.grossCents)}.` : ""}</p>
-              <button className="btn btn-ghost" type="button" onClick={addMix} disabled={!canOrder || !playerId}>Add a mix pack</button>
-            </article>
-          )}
           {showLadder && (
             <article className="panel">
               <h3>Prices for more than one bag</h3>
@@ -370,7 +331,7 @@ export function Shop(props: {
                     <ul>
                       {tiers.map((tier) => {
                         const label = props.tierLabels.find((item) => item.qty === tier.qty)?.label;
-                        return <li key={tier.qty}>{label ? `${label}: ` : ""}{tier.qty} bags · {formatCad(tier.priceCents)}</li>;
+                        return <li key={tier.qty}>{label ? `${label}: ` : ""}{bagCount(tier.qty)} · {formatCad(tier.priceCents)}</li>;
                       })}
                     </ul>
                   </div>
@@ -419,7 +380,8 @@ export function Shop(props: {
                 </div>
               );
             })}
-            <p>{displayBags > 0 ? `${displayBags} bags · ${formatCad(displayCents)}` : priced.error}</p>
+            <p>{displayBags > 0 ? `${bagCount(displayBags)} · ${formatCad(displayCents)}` : priced.error}</p>
+            {displayBags > 0 ? <p>Prices include GST.</p> : null}
             {props.orderTarget?.kind === "supporter" && (
               <div className="pay-choice" role="radiogroup" aria-label="How will you pay?">
                 <button
@@ -454,7 +416,8 @@ export function Shop(props: {
           <div className="sticky-pay">
             <div>
               <strong>{displayBags ? formatCad(displayCents) : "Add bags"}</strong>
-              <div className="muted" style={{ color: "rgba(255,255,255,0.7)" }}>{displayBags || 0} bags</div>
+              <div className="muted" style={{ color: "rgba(255,255,255,0.7)" }}>{bagCount(displayBags || 0)}</div>
+              {displayBags > 0 ? <div className="muted" style={{ color: "rgba(255,255,255,0.7)" }}>Prices include GST.</div> : null}
             </div>
             <button className="btn btn-gold" type="submit" disabled={!canOrder || pending || displayBags === 0}>
               {pending ? "Starting…" : props.orderTarget?.kind === "parent" || paymentMethod === "cash" && props.orderTarget ? "Save cash order" : "Checkout"}

@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/admin/preview-links",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
+      {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },

@@ -17,7 +17,8 @@ export function inboundReplyDomain(env: Record<string, string | undefined> = pro
   return (env.INBOUND_REPLY_DOMAIN || DEFAULT_INBOUND_REPLY_DOMAIN).trim().toLowerCase().replace(/^@/, "");
 }
 
-const BAG_PRICE_LINE = "Bags start at $12 (GST included), and your group makes $5 or more on every bag sold. That's at least 40% of every sale.";
+const BAG_PRICE_LINE =
+  "Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.";
 
 export type ProspectStep = "quote" | "day2" | "day5" | "day10";
 
@@ -106,20 +107,17 @@ Thanks for reaching out.
 ${activity}
 Good luck to ${fields.teamName}!
 
-Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} bags per participant. Fewer if supporters pick premium.
+Here's your estimate. To raise ${fields.goal}, your group would sell about ${fields.bags} bags, which is about ${fields.bagsEach} bags per participant.
 
 ${BAG_PRICE_LINE}
-
-Single bags only for now.
 
 ${signOff(fields).text}`;
   const html = `<p>Hi ${escapeHtml(fields.firstName)},</p>
 <p>Thanks for reaching out.</p>
 <p>${escapeHtml(activity)}</p>
 <p>Good luck to ${escapeHtml(fields.teamName)}!</p>
-<p>Here's your estimate. To raise ${escapeHtml(fields.goal)}, your group would sell about ${escapeHtml(fields.bags)} bags, which is about ${escapeHtml(fields.bagsEach)} bags per participant. Fewer if supporters pick premium.</p>
+<p>Here's your estimate. To raise ${escapeHtml(fields.goal)}, your group would sell about ${escapeHtml(fields.bags)} bags, which is about ${escapeHtml(fields.bagsEach)} bags per participant.</p>
 <p>${escapeHtml(BAG_PRICE_LINE)}</p>
-<p>Single bags only for now.</p>
 ${signOff(fields).html}`;
   const wrapped = wrap(preview, html, text);
   return {
@@ -137,7 +135,7 @@ export function prospectDay2Email(fields: ProspectFields, replyTo?: string | nul
 Here's how a fundraiser runs for ${fields.teamName}:
 
 1. We send you an order link to share with supporters.
-2. Supporters order online, and your group makes $5 or more on every bag.
+2. Supporters order online, and your group keeps $5 on every $12 bag.
 3. ${BAG_ARRIVAL}
 
 Your estimate is still about ${fields.bags} bags (${fields.bagsEach} per participant) to raise ${fields.goal}.
@@ -147,7 +145,7 @@ ${signOff(fields).text}`;
 <p>Here's how a fundraiser runs for ${escapeHtml(fields.teamName)}:</p>
 <ol>
 <li>We send you an order link to share with supporters.</li>
-<li>Supporters order online, and your group makes $5 or more on every bag.</li>
+<li>Supporters order online, and your group keeps $5 on every $12 bag.</li>
 <li>${escapeHtml(BAG_ARRIVAL)}</li>
 </ol>
 <p>Your estimate is still about ${escapeHtml(fields.bags)} bags (${escapeHtml(fields.bagsEach)} per participant) to raise ${escapeHtml(fields.goal)}.</p>
@@ -211,27 +209,24 @@ export function prospectEmailForStep(step: Exclude<ProspectStep, "quote">, field
   return prospectDay10Email(fields, replyTo);
 }
 
-/** DRAFT until CORA writes the final roster note. */
-export function rosterDraftEmail(input: { firstName: string; teamName: string; rosterUrl: string }): ProspectEmail {
-  const preview = "DRAFT: participant links are ready.";
-  const text = `DRAFT — CORA writes the final copy.
+export function rosterDraftEmail(input: { firstName: string; teamName: string; rosterUrl: string; unsubscribeUrl: string }): ProspectEmail {
+  const preview = "Families sign up, and each participant gets a link to share.";
+  const text = `Hi ${input.firstName},
 
-Hi ${input.firstName},
+${input.teamName} is approved. Add participant names and copy each share link.
 
-${input.teamName} is approved. Add participant names and copy each share link:
-
-${input.rosterUrl}
+Open the roster: ${input.rosterUrl}
 
 Thanks,
 ${SIGN_OFF_NAME}
-Sweet Success Fundraising`;
-  const html = `<p><strong>DRAFT — CORA writes the final copy.</strong></p>
-<p>Hi ${escapeHtml(input.firstName)},</p>
+Unsubscribe: ${input.unsubscribeUrl}`;
+  const html = `<p>Hi ${escapeHtml(input.firstName)},</p>
 <p>${escapeHtml(input.teamName)} is approved. Add participant names and copy each share link.</p>
 <p><a href="${escapeHtml(input.rosterUrl)}">Open the roster</a></p>
-<p>Thanks,<br>${escapeHtml(SIGN_OFF_NAME)}<br>Sweet Success Fundraising</p>`;
+<p>Thanks,<br>${escapeHtml(SIGN_OFF_NAME)}</p>
+<p><a href="${escapeHtml(input.unsubscribeUrl)}">Unsubscribe</a></p>`;
   const wrapped = wrap(preview, html, text);
-  return { subject: `DRAFT: Participant links for ${input.teamName}`, preview, ...wrapped };
+  return { subject: `Participant links for ${input.teamName}`, preview, ...wrapped };
 }
 
 export const PROSPECT_STEP_EMAIL: Record<"day2" | "day5" | "day10", string> = {

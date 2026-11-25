@@ -18,6 +18,9 @@ export function silenceRouteAnnouncer(doc: Pick<Document, "getElementsByName" | 
 export function SilenceAnnouncer() {
   useEffect(() => {
     silenceRouteAnnouncer(document);
+    const observer = new MutationObserver(() => silenceRouteAnnouncer(document));
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, []);
   return null;
 }

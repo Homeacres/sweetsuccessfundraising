@@ -1,8 +1,10 @@
 import { cashReceiptCopy } from "@/lib/cash-receipt";
 import { supabaseConfigured } from "@/lib/env";
+import { receiptMoneyLines } from "@/lib/gst";
 import { isUnguessableToken } from "@/lib/ledger-rules";
 import { formatCad } from "@/lib/money";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { bagCount } from "@/lib/text";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cash receipt", robots: { index: false, follow: false } };
@@ -55,8 +57,8 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
           <li key={`${line.label}-${index}`}>{line.label} × {line.qty} — {formatCad(line.amountCents)}</li>
         ))}
       </ul>
-      <p><strong>Total {formatCad(row.total_cad ?? 0)}</strong> · {row.total_bags ?? 0} bags</p>
-      <p>GST included.</p>
+      {receiptMoneyLines(row.total_cad ?? 0).map((line) => <p key={line}>{line}</p>)}
+      <p>{bagCount(row.total_bags ?? 0)}</p>
       <p className="muted">{copy.text.includes("Received") ? copy.text.split("\n").find((line) => line.startsWith("Received")) : null}</p>
     </main>
   );

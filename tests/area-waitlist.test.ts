@@ -8,7 +8,6 @@ import { resendBody } from "@/lib/email/send";
 import { silenceRouteAnnouncer } from "@/components/SilenceAnnouncer";
 import {
   IMPLIED_WAITLIST_CONSENT,
-  WAITLIST_BODY,
   WAITLIST_RESULT_NOTE,
   areaOpeningNotice,
   formatServedCode,
@@ -110,7 +109,7 @@ describe("out-of-area intake", () => {
     expect(store.sent[0].html).toContain(">Unsubscribe</a>");
     expect(store.sent[0].headers["Reply-To"]).toBe("hello@sweetsuccessfundraising.com");
     expect(store.sent[0].text).not.toMatch(/skittles|jolly rancher|gummy/i);
-    expect(readFileSync("lib/waitlist-copy.ts", "utf8")).toContain("DRAFT copy, Chris sign-off needed before go-live");
+    expect(readFileSync("lib/waitlist-copy.ts", "utf8")).not.toContain("DRAFT copy, Chris sign-off needed before go-live");
     expect(() => areaOpeningNotice()).toThrow(/not built/);
     expect(() => waitlistReplyTo({ SSF_WAITLIST_REPLY_TO: "someone@gmail.com" })).toThrow(/personal Gmail/);
   });
@@ -197,8 +196,8 @@ describe("out-of-area intake", () => {
     expect(readFileSync("app/waitlist/keep/page.tsx", "utf8")).not.toContain(".update(");
     expect(postalFieldHint()).toBe("Currently serving Alberta groups only.");
     expect(WAITLIST_RESULT_NOTE).toBe("We've emailed you, and we'll let you know if we start serving your area. You can unsubscribe anytime.");
-    expect(WAITLIST_BODY.startsWith("Thanks for your interest.")).toBe(true);
     const form = readFileSync("components/ApplyForm.tsx", "utf8");
+    expect(form).not.toContain("Thanks for your interest. Sweet Success Fundraising isn't available");
     expect(form.match(/role="alert"/g)).toHaveLength(1);
     expect(form).toContain("aria-describedby=\"postal-hint\"");
     expect(form).toContain("postalFieldHint()");
@@ -233,5 +232,10 @@ describe("out-of-area intake", () => {
     silenceRouteAnnouncer(doc as unknown as Document);
     expect(node.role).toBe("status");
     expect(empty.role).toBe("");
+    node.role = "alert";
+    silenceRouteAnnouncer(doc as unknown as Document);
+    expect(node.role).toBe("status");
+    expect(readFileSync("components/SilenceAnnouncer.tsx", "utf8")).toContain("MutationObserver");
+    expect(form.match(/id="out-of-area"/g)).toHaveLength(1);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PILOT_BUNDLES_ENABLED, pilotBundleOffers, pilotCheckoutRejection, pilotSellableBag } from "@/lib/catalog";
 import { mixPackBagCount, mixPackLines, normalizeCartLines } from "@/lib/cart";
 import {
   cartTotals,
@@ -113,6 +114,18 @@ describe("bundle tiers if they are reactivated", () => {
     expect(lines.map((line) => line.grossCents)).toEqual([1167, 1167, 1166]);
     expect(lines.reduce((sum, line) => sum + line.grossCents, 0)).toBe(3500);
     expect(lines.every((line) => line.teamShareCents === 500)).toBe(true);
+  });
+});
+
+describe("pilot catalog", () => {
+  it("sells standard bags only and rejects premium and packs", () => {
+    expect(pilotSellableBag("standard")).toBe(true);
+    expect(pilotSellableBag("premium")).toBe(false);
+    expect(PILOT_BUNDLES_ENABLED).toBe(false);
+    expect(pilotBundleOffers([{ offerId: "pack" }])).toEqual([]);
+    expect(pilotCheckoutRejection({ bagCodes: ["premium"], bundleRequested: false })).toBe("One of those candies is no longer for sale.");
+    expect(pilotCheckoutRejection({ bagCodes: ["standard"], bundleRequested: true })).toBe("That pack is not for sale.");
+    expect(pilotCheckoutRejection({ bagCodes: ["standard"], bundleRequested: false })).toBeNull();
   });
 });
 

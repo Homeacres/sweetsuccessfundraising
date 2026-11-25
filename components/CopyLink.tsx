@@ -8,7 +8,7 @@ export function CopyLink({ href, label }: { href: string; label: string }) {
     <div className="copy-link">
       <div>
         <strong>{label}</strong>
-        <div className="muted copy-url">{href}</div>
+        <div className="muted copy-url" title={href}>{href}</div>
       </div>
       <button
         className="btn btn-ghost"

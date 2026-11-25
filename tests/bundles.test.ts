@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { bundlePickError, splitBundleCents, visibleBundleOffers, type BundleOffer } from "@/lib/bundles";
+import { pilotBundleOffers } from "@/lib/catalog";
 
 const TIERS = [
   { label: "Mix Pack", bags: 3, price: 3600, share: 1500 },
@@ -71,5 +72,6 @@ describe("which bundles a shop may show", () => {
   it("shows test tiers on preview and hides them in production", () => {
     expect(visibleBundleOffers(offers, { VERCEL_ENV: "preview" }).map((offer) => offer.label)).toEqual(["Live", "7-Pack"]);
     expect(visibleBundleOffers(offers, { VERCEL_ENV: "production" }).map((offer) => offer.label)).toEqual(["Live"]);
+    expect(pilotBundleOffers(visibleBundleOffers(offers, { VERCEL_ENV: "preview" }))).toEqual([]);
   });
 });

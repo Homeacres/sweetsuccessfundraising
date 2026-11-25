@@ -46,7 +46,9 @@ export default async function KeepPostedPage({ searchParams }: { searchParams: P
 function Neutral() {
   return (
     <main className="page wrap">
-      <h1>This link is not valid</h1>
+      <h1>This link isn't working</h1>
+      <p>Sorry, this link isn't working anymore. It may have expired, or you may already be unsubscribed.</p>
+      <p>Questions? <a href="mailto:hello@sweetsuccessfundraising.com">Email hello@sweetsuccessfundraising.com</a></p>
     </main>
   );
 }

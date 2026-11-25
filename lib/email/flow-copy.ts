@@ -39,6 +39,24 @@ function replyHeaders(env: Record<string, string | undefined> = process.env): Re
   return reply ? { "Reply-To": reply } : undefined;
 }
 
+function flowShell(subject: string, preview: string, inner: string): string {
+  return `<!doctype html>
+<html>
+<body style="margin:0;background:#F7F3FF;font-family:Arial,sans-serif;color:#2D1A4E;">
+  <div style="display:none;max-height:0;overflow:hidden;">${esc(preview)}</div>
+  <div style="max-width:560px;margin:0 auto;padding:24px;">
+    <p style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#C9A84C;font-weight:700;">Sweet Success Fundraising</p>
+    <h1>${esc(subject)}</h1>
+    ${inner}
+  </div>
+</body>
+</html>`;
+}
+
+function publish(mail: FlowEmail): FlowEmail {
+  return { ...mail, html: flowShell(mail.subject, mail.preview, mail.html) };
+}
+
 export function passedGoal(goalPct: number): boolean {
   return goalPct >= 100;
 }
@@ -81,7 +99,7 @@ ${end.text}`;
 </ul>
 <p>We'll check the schedule and confirm your window ${esc(shortly)}. Nothing else to do for now.</p>
 ${end.html}`;
-  return { subject: `We've got your ${input.teamName} request`, preview, text, html, headers: replyHeaders(input.env) };
+  return publish({ subject: `We've got your ${input.teamName} request`, preview, text, html, headers: replyHeaders(input.env) });
 }
 
 export function alternateWindowEmail(input: {
@@ -112,7 +130,7 @@ ${end.text}`;
 ${take.html}
 <p>None of these work? <a href="${esc(input.pickUrl)}">pick another slot</a> lets you pick another slot, join the waitlist, or tell us 'not right now'.</p>
 ${end.html}`;
-  return { subject: `A start window that works for ${input.teamName}`, preview, text, html, headers: replyHeaders(input.env) };
+  return publish({ subject: `A start window that works for ${input.teamName}`, preview, text, html, headers: replyHeaders(input.env) });
 }
 
 export function approvedEmail(input: {
@@ -145,7 +163,7 @@ ${end.text}`;
 ${dash.html}
 <p>Next, we'll email you a short invite that's ready to forward to your participants' families.</p>
 ${end.html}`;
-  return { subject: `You're on! ${input.teamName} starts ${input.startWindow}`, preview: "Thanks for choosing us. Here's your dashboard.", text, html, headers: replyHeaders(input.env) };
+  return publish({ subject: `You're on! ${input.teamName} starts ${input.startWindow}`, preview: "Thanks for choosing us. Here's your dashboard.", text, html, headers: replyHeaders(input.env) });
 }
 
 export function parentInviteEmail(input: {
@@ -164,7 +182,7 @@ ${input.teamName} is running a Sweet Success fundraiser from ${input.startWindow
 How it works:
 1. Sign up your participant below. It takes a minute.
 2. You'll get their own order link to share with family, friends and supporters.
-3. Supporters order online. Bags start at $12 (GST included), and our group makes $5 or more on every bag.
+3. Supporters order online. Bags are $12 (GST included), and our group keeps $5 on every bag.
 4. When the fundraiser ends, the whole order comes to our organizer, who hands it out.
 
 ${sign.text}
@@ -178,19 +196,19 @@ ${end.text}`;
 <ol>
 <li>Sign up your participant below. It takes a minute.</li>
 <li>You'll get their own order link to share with family, friends and supporters.</li>
-<li>Supporters order online. Bags start at $12 (GST included), and our group makes $5 or more on every bag.</li>
+<li>Supporters order online. Bags are $12 (GST included), and our group keeps $5 on every bag.</li>
 <li>When the fundraiser ends, the whole order comes to our organizer, who hands it out.</li>
 </ol>
 ${sign.html}
 <p>Thanks for helping out!</p>
 ${end.html}`;
-  return {
+  return publish({
     subject: `Join the ${input.teamName} fundraiser: sign up your participant`,
     preview: "Quick sign-up so your participant gets their own order link.",
     text,
     html,
     headers: replyHeaders(input.env),
-  };
+  });
 }
 
 export function countdownEmail(input: {
@@ -223,13 +241,13 @@ ${end.text}`;
 ${again.html}
 ${dash.html}
 ${end.html}`;
-  return {
+  return publish({
     subject: `${input.signedUp} of ${input.participants} signed up for ${input.teamName}`,
     preview: `${input.remaining} to go, launching in ${input.daysToLaunch} days.`,
     text,
     html,
     headers: replyHeaders(input.env),
-  };
+  });
 }
 
 export function parkedEmail(input: {
@@ -252,13 +270,13 @@ export function parkedEmail(input: {
 <p>Good luck to ${esc(input.teamName)}.</p>`;
   const text = `Hi ${input.firstName},\n\n${body}\n\n${end.text}`;
   const html = `<p>Hi ${esc(input.firstName)},</p>\n${htmlBody}\n${end.html}`;
-  return {
+  return publish({
     subject: `No problem, ${input.firstName}`,
     preview: "We'll be here when the timing's right.",
     text,
     html,
     headers: replyHeaders(input.env),
-  };
+  });
 }
 
 export type LiveLinks = {
@@ -300,9 +318,9 @@ export function progressEmail(input: LiveLinks): FlowEmail {
   const first = over ? passedGoalFirstLine(input.teamName, input.goalPct) : `${input.teamName} is at ${input.goalPct}% of its goal. Thanks to everyone who's shared so far!`;
   const period = stars("Star sellers since our last update", input.periodStars);
   const links = audience(input);
-  const text = `Hi ${input.firstName},\n\n${first}\n${period.text}Every bag counts, whether it's the first one or the fiftieth.\nTips to keep it going:\n- Send a personal note with your link. It works better than a plain link.\n- Ask grandparents and neighbours. They love supporting local groups.\n- Mention premium bags. Your group makes even more on those.\n\n${links.text}\n\n${end.text}`;
-  const html = `<p>Hi ${esc(input.firstName)},</p><p>${esc(first)}</p>${period.html}<p>Every bag counts, whether it's the first one or the fiftieth.</p><p>Tips to keep it going:</p><ul><li>Send a personal note with your link. It works better than a plain link.</li><li>Ask grandparents and neighbours. They love supporting local groups.</li><li>Mention premium bags. Your group makes even more on those.</li></ul>${links.html}${end.html}`;
-  return { subject, preview: "Big thanks to everyone sharing, plus this week's star sellers.", text, html, headers: replyHeaders(input.env) };
+  const text = `Hi ${input.firstName},\n\n${first}\n${period.text}Every bag counts, whether it's the first one or the fiftieth.\nTips to keep it going:\n- Send a personal note with your link. It works better than a plain link.\n- Ask grandparents and neighbours. They love supporting local groups.\n\n${links.text}\n\n${end.text}`;
+  const html = `<p>Hi ${esc(input.firstName)},</p><p>${esc(first)}</p>${period.html}<p>Every bag counts, whether it's the first one or the fiftieth.</p><p>Tips to keep it going:</p><ul><li>Send a personal note with your link. It works better than a plain link.</li><li>Ask grandparents and neighbours. They love supporting local groups.</li></ul>${links.html}${end.html}`;
+  return publish({ subject, preview: "Big thanks to everyone sharing, plus this week's star sellers.", text, html, headers: replyHeaders(input.env) });
 }
 
 export function midpointEmail(input: LiveLinks): FlowEmail {
@@ -315,7 +333,7 @@ export function midpointEmail(input: LiveLinks): FlowEmail {
   const links = audience(input);
   const text = `Hi ${input.firstName},\n\n${first}\n${period.text}${overall.text}Every participant helps get us there. If you haven't shared your link in a while, now's a great time to send it out again.\n\n${links.text}\n\n${end.text}`;
   const html = `<p>Hi ${esc(input.firstName)},</p><p>${esc(first)}</p>${period.html}${overall.html}<p>Every participant helps get us there. If you haven't shared your link in a while, now's a great time to send it out again.</p>${links.html}${end.html}`;
-  return { subject, preview: `${input.goalPct}% of goal and ${input.daysLeft} days to go.`, text, html, headers: replyHeaders(input.env) };
+  return publish({ subject, preview: `${input.goalPct}% of goal and ${input.daysLeft} days to go.`, text, html, headers: replyHeaders(input.env) });
 }
 
 export function finalDaysEmail(input: LiveLinks): FlowEmail {
@@ -328,7 +346,7 @@ export function finalDaysEmail(input: LiveLinks): FlowEmail {
   const links = audience(input);
   const text = `Hi ${input.firstName},\n\n${first}\n${period.text}${overall.text}Every bag counts in the final stretch. Send your link to anyone who meant to order but hasn't yet.\n\n${links.text}\n\n${end.text}`;
   const html = `<p>Hi ${esc(input.firstName)},</p><p>${esc(first)}</p>${period.html}${overall.html}<p>Every bag counts in the final stretch. Send your link to anyone who meant to order but hasn't yet.</p>${links.html}${end.html}`;
-  return { subject, preview: `${input.goalPct}% there. One more share can do it.`, text, html, headers: replyHeaders(input.env) };
+  return publish({ subject, preview: `${input.goalPct}% there. One more share can do it.`, text, html, headers: replyHeaders(input.env) });
 }
 
 export function wrapUpEmail(input: LiveLinks): FlowEmail {
@@ -336,13 +354,13 @@ export function wrapUpEmail(input: LiveLinks): FlowEmail {
   const overall = stars("A special shout-out to our top sellers", input.overallStars);
   const text = `Hi ${input.firstName},\n\nThe ${input.teamName} fundraiser is closed, and together you raised ${input.salesTotal} (${input.goalPct}% of the goal). Thank you to every participant, family and supporter!\n${overall.text}Every single bag helped get us here, and everyone who shared made a difference.\nWhat's next: we deliver the whole order to your organizer, who'll add your group's personal touch and hand it out.\n\n${end.text}`;
   const html = `<p>Hi ${esc(input.firstName)},</p><p>The ${esc(input.teamName)} fundraiser is closed, and together you raised ${esc(input.salesTotal)} (${input.goalPct}% of the goal). Thank you to every participant, family and supporter!</p>${overall.html}<p>Every single bag helped get us here, and everyone who shared made a difference.</p><p>What's next: we deliver the whole order to your organizer, who'll add your group's personal touch and hand it out.</p>${end.html}`;
-  return {
+  return publish({
     subject: `Thank you from ${input.teamName}!`,
     preview: `You raised ${input.salesTotal}. Here's what happens next.`,
     text,
     html,
     headers: replyHeaders(input.env),
-  };
+  });
 }
 
 export function launchEmail(input: LiveLinks): FlowEmail {
@@ -350,5 +368,5 @@ export function launchEmail(input: LiveLinks): FlowEmail {
   const links = audience(input);
   const text = `Hi ${input.firstName},\n\nWe're live! The ${input.teamName} fundraiser runs until ${input.endDate}, and the goal is ${input.goal}.\nShare your link with family, friends and supporters today:\n\n${links.text}\n\nA few easy ways to share: text it to family, post it in your group chats, and ask a couple of people to pass it on.\n\n${end.text}`;
   const html = `<p>Hi ${esc(input.firstName)},</p><p>We're live! The ${esc(input.teamName)} fundraiser runs until ${esc(input.endDate)}, and the goal is ${esc(input.goal)}.</p><p>Share your link with family, friends and supporters today:</p>${links.html}<p>A few easy ways to share: text it to family, post it in your group chats, and ask a couple of people to pass it on.</p>${end.html}`;
-  return { subject: `${input.teamName}'s fundraiser is live!`, preview: "Share your link today. The first day counts.", text, html, headers: replyHeaders(input.env) };
+  return publish({ subject: `${input.teamName}'s fundraiser is live!`, preview: "Share your link today. The first day counts.", text, html, headers: replyHeaders(input.env) });
 }
