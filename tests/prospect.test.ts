@@ -44,10 +44,10 @@ describe("prospect copy", () => {
     expect(quote.text).toContain("about 400 bags, which is about 20 bags per participant");
     expect(quote.text).toContain("Questions? Email hello@sweetsuccessfundraising.com.");
     expect(quote.html).toContain('href="mailto:hello@sweetsuccessfundraising.com"');
-    expect(quote.text).toContain("Bags start at $12 (GST included), and your group makes $5 or more on every bag sold. That's at least 40% of every sale.");
+    expect(quote.text).toContain("Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.");
     expect(quote.text).toContain("We love working with local groups like yours.");
-    expect(quote.text).not.toContain("keeps $5");
-    expect(quote.text).toContain("Single bags only for now.");
+    expect(quote.text).not.toContain("Fewer if supporters pick premium.");
+    expect(quote.text).not.toContain("Single bags only for now.");
     expect(quote.text).not.toContain("Prices include GST.");
     expect(quote.text).toContain("Start my fundraiser: https://preview.example/o/start/token");
     expect(quote.text).toContain(SIGN_OFF_NAME);
@@ -58,7 +58,7 @@ describe("prospect copy", () => {
     const day2 = prospectDay2Email(fields);
     expect(day2.subject).toBe("How it works for Hawks");
     expect(day2.text).toContain(BAG_ARRIVAL);
-    expect(day2.text).toContain("Supporters order online, and your group makes $5 or more on every bag.");
+    expect(day2.text).toContain("Supporters order online, and your group keeps $5 on every $12 bag.");
     expect(day2.text).toContain("20 per participant");
 
     expect(prospectDay5Email(fields).subject).toBe("Any questions before you start?");
@@ -121,7 +121,7 @@ describe("activity lines", () => {
       signupUrl: "https://preview.example/p/join/token",
       unsubscribeUrl: "https://preview.example/o/unsubscribe/token",
     });
-    expect(invite.text).toContain("Supporters order online. Bags start at $12 (GST included), and our group makes $5 or more on every bag.");
+    expect(invite.text).toContain("Supporters order online. Bags are $12 (GST included), and our group keeps $5 on every bag.");
     const progress = progressEmail({
       firstName: "Pat",
       teamName: "Hawks",
@@ -136,9 +136,10 @@ describe("activity lines", () => {
       supporterLinks: [],
       unsubscribeUrl: "https://preview.example/o/unsubscribe/token",
     });
-    expect(progress.text).toContain("Mention premium bags. Your group makes even more on those.");
+    expect(progress.text).not.toContain("Mention premium bags");
+    expect(progress.html).not.toContain("premium");
     const sources = ["activity-lines.ts", "prospect.ts", "flow-copy.ts", "copy.ts"].map((name) => readFileSync(`lib/email/${name}`, "utf8")).join("\n");
-    expect(sources).not.toMatch(/keeps \$[56]/);
+    expect(sources).not.toMatch(/keeps \$6/);
     expect(sources).not.toContain("$6 goes to the group");
   });
 });

@@ -1,3 +1,4 @@
+import { formatTeamCad } from "@/lib/money";
 import { playerDisplayName } from "@/lib/names";
 
 export type Seller = {
@@ -12,6 +13,10 @@ export type Seller = {
 export function goalPercent(raisedCents: number, goalCents: number): number {
   if (!Number.isFinite(goalCents) || goalCents <= 0 || !Number.isFinite(raisedCents) || raisedCents <= 0) return 0;
   return Math.max(0, Math.round((raisedCents / goalCents) * 100));
+}
+
+export function goalProgressLine(raisedCents: number, goalCents: number, pct = goalPercent(raisedCents, goalCents)): string {
+  return `${formatTeamCad(raisedCents)} raised (${pct}% of the ${formatTeamCad(goalCents)} goal).`;
 }
 
 /** Top sellers by bags. Opted-in people with sales only. Never zeros. At most 3. */

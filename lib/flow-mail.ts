@@ -65,6 +65,8 @@ export async function sendApprovedPack(organizerId: string, windowLabel: string)
     signupUrl: links.signupUrl,
     unsubscribeUrl: links.unsubscribeUrl,
   }));
+  const { sendRosterDraft } = await import("@/lib/roster-mail");
+  await sendRosterDraft(organizerId);
 }
 
 export async function sendAlternateOffer(organizerId: string, bookedLabel: string, altLabel: string, windowId: string): Promise<void> {

@@ -1,30 +1,57 @@
 import Link from "next/link";
+import { gstIncludedLine } from "@/lib/gst";
 import { supabaseConfigured } from "@/lib/env";
 import { formatCad } from "@/lib/money";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { bagCount } from "@/lib/text";
 
 export const metadata = { title: "Order received", robots: { index: false, follow: false } };
 
 export default async function SuccessPage({ searchParams }: { searchParams: Promise<{ session_id?: string }> }) {
   const { session_id: sessionId } = await searchParams;
-  let summary: { status: string; total: number; bags: number } | null = null;
+  let summary: { status: string; total: number; bags: number; team: string; firstName: string } | null = null;
   if (sessionId && supabaseConfigured()) {
     const { data } = await supabaseAdmin()
       .from("orders")
-      .select("payment_status, total_cad, total_bags")
+      .select("payment_status, total_cad, total_bags, cp_id, campaign_id")
       .eq("stripe_checkout_session_id", sessionId)
       .maybeSingle();
-    if (data) summary = { status: data.payment_status, total: data.total_cad, bags: data.total_bags };
+    if (data) {
+      const [{ data: campaign }, { data: player }] = await Promise.all([
+        supabaseAdmin().from("campaigns").select("campaign_name").eq("campaign_id", data.campaign_id).maybeSingle(),
+        supabaseAdmin()
+          .from("campaign_participants")
+          .select("player_first_name")
+          .eq("cp_id", data.cp_id)
+          .maybeSingle(),
+      ]);
+      summary = {
+        status: data.payment_status,
+        total: data.total_cad,
+        bags: data.total_bags,
+        team: campaign?.campaign_name || "the team",
+        firstName: (player?.player_first_name || "").trim(),
+      };
+    }
   }
 
   return (
     <main className="page wrap">
       <h1>Thank you</h1>
       {summary ? (
-        <p>
-          {summary.status === "paid" ? "Payment received." : "We're confirming the payment."}{" "}
-          {summary.bags} bag{summary.bags === 1 ? "" : "s"} · {formatCad(summary.total)}. A receipt is on its way to your email.
-        </p>
+        <>
+          <p>
+            {summary.firstName
+              ? `Thanks! Your order counts toward ${summary.firstName}'s total for ${summary.team}.`
+              : `Thanks for supporting ${summary.team}.`}
+          </p>
+          <p>
+            {summary.status === "paid" ? "Payment received." : "We're confirming the payment."}{" "}
+            {bagCount(summary.bags)} · {formatCad(summary.total)}.
+          </p>
+          <p>{gstIncludedLine(summary.total)}</p>
+          <p>A receipt is on its way to your email.</p>
+        </>
       ) : (
         <p>If the payment went through, your receipt will arrive by email. The candy goes to the team organizer, not to a home address.</p>
       )}

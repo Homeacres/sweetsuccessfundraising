@@ -7,6 +7,9 @@ export function AdminNav() {
       <Link href="/admin/applications">Applications</Link>
       <Link href="/admin/reviews">Review</Link>
       <Link href="/admin/inbox">Inbox</Link>
+      <Link href="/admin/bundles">Bundles</Link>
+      <Link href="/admin/waitlist">Waitlist</Link>
+      {process.env.VERCEL_ENV !== "production" ? <Link href="/admin/preview-links">Preview links</Link> : null}
     </nav>
   );
 }

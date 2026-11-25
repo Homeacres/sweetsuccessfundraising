@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { finalDaysEmail, midpointEmail, progressEmail, requestReceivedEmail, wrapUpEmail, type LiveLinks } from "@/lib/email/flow-copy";
+import { alternateWindowEmail, approvedEmail, countdownEmail, finalDaysEmail, launchEmail, midpointEmail, parentInviteEmail, parkedEmail, progressEmail, requestReceivedEmail, wrapUpEmail, type FlowEmail, type LiveLinks } from "@/lib/email/flow-copy";
+import { rosterDraftEmail } from "@/lib/email/prospect";
 import { liveMailKind, shopPhase } from "@/lib/launch";
 import { signOrganizerAction, verifyOrganizerAction } from "@/lib/organizer-token";
 import { goalPercent, starSellerLine, starSellers, type Seller } from "@/lib/standings";
@@ -66,6 +67,55 @@ describe("emails 12 to 15", () => {
     expect(readFileSync("app/page.tsx", "utf8")).toContain("Up and running fast");
     expect(readFileSync("app/page.tsx", "utf8")).not.toContain("48 hours");
     expect(under.text).toContain("The Sweet Success Family");
+  });
+});
+
+describe("flow email shell and roster", () => {
+  it("gives every flow email one heading equal to its subject", () => {
+    const unsub = "https://example.invalid/unsubscribe";
+    const mails: FlowEmail[] = [
+      requestReceivedEmail({ firstName: "Pat", teamName: "TEST Hawks Dance", startWindow: "Nov 15", participants: 12, goal: "$2,000", unsubscribeUrl: unsub }),
+      alternateWindowEmail({ firstName: "Pat", teamName: "TEST Hawks Dance", startWindow: "Nov 15", altWindow: "Dec 1", acceptUrl: "https://example.invalid/accept", pickUrl: "https://example.invalid/pick", unsubscribeUrl: unsub }),
+      approvedEmail({ firstName: "Pat", teamName: "TEST Hawks Dance", startWindow: "Nov 15", dashboardUrl: "https://example.invalid/dash", unsubscribeUrl: unsub, sport: "Dance" }),
+      parentInviteEmail({ teamName: "TEST Hawks Dance", startWindow: "Nov 15", goal: "$2,000", signupUrl: "https://example.invalid/join", unsubscribeUrl: unsub }),
+      parkedEmail({ firstName: "Pat", teamName: "TEST Hawks Dance", estimateUrl: "https://example.invalid/start", unsubscribeUrl: unsub, waitlist: false }),
+      countdownEmail({ firstName: "Pat", teamName: "TEST Hawks Dance", signedUp: 4, participants: 12, remaining: 8, daysToLaunch: 3, signupUrl: "https://example.invalid/join", dashboardUrl: "https://example.invalid/dash", unsubscribeUrl: unsub }),
+      progressEmail(base),
+      midpointEmail(base),
+      finalDaysEmail(base),
+      wrapUpEmail(base),
+      launchEmail(base),
+    ];
+    for (const mail of mails) {
+      const headings = [...mail.html.matchAll(/<h1>([^<]*)<\/h1>/g)].map((match) => match[1]);
+      expect(headings).toEqual([mail.subject]);
+    }
+  });
+
+  it("builds the approved pack as three emails and the roster has an unsubscribe link", () => {
+    const roster = rosterDraftEmail({
+      firstName: "Pat",
+      teamName: "TEST Hawks Dance",
+      rosterUrl: "https://example.invalid/roster",
+      unsubscribeUrl: "https://example.invalid/unsubscribe",
+    });
+    const pack = [
+      approvedEmail({ firstName: "Pat", teamName: "TEST Hawks Dance", startWindow: "Nov 15", dashboardUrl: "https://example.invalid/dash", unsubscribeUrl: "https://example.invalid/unsubscribe" }),
+      parentInviteEmail({ teamName: "TEST Hawks Dance", startWindow: "Nov 15", goal: "$2,000", signupUrl: "https://example.invalid/join", unsubscribeUrl: "https://example.invalid/unsubscribe" }),
+      roster,
+    ];
+    expect(pack).toHaveLength(3);
+    expect(roster.text).toContain("Families sign up their own participants, and each one gets a link to share with supporters.");
+    expect(roster.text).toContain("Bags are $12 (GST included), and your group keeps $5 on every bag. That's about 42% of every sale.");
+    expect(roster.text).toContain("Unsubscribe: https://example.invalid/unsubscribe");
+    expect(roster.text).not.toContain("Add participant names");
+    expect(roster.html).toContain('href="https://example.invalid/unsubscribe"');
+    expect(`${roster.subject}\n${roster.preview}\n${roster.text}\n${roster.html}`).not.toContain("DRAFT");
+    const source = readFileSync("lib/flow-mail.ts", "utf8");
+    const fn = source.slice(source.indexOf("async function sendApprovedPack"), source.indexOf("async function sendAlternateOffer"));
+    expect(fn.indexOf("approvedEmail")).toBeLessThan(fn.indexOf("parentInviteEmail"));
+    expect(fn.indexOf("parentInviteEmail")).toBeLessThan(fn.indexOf("sendRosterDraft"));
+    expect(readFileSync("lib/roster-mail.ts", "utf8")).toContain('"prospect_roster"');
   });
 });
 

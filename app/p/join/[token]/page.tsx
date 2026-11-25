@@ -2,7 +2,8 @@ import { ParentSignupDone, ParentSignupForm } from "@/components/FlowScreens";
 import { CopyLink } from "@/components/CopyLink";
 import { appUrl, supabaseConfigured } from "@/lib/env";
 import { organizerActionSecret, verifyOrganizerAction } from "@/lib/organizer-token";
-import { sharePath } from "@/lib/roster";
+import { playerDisplayName } from "@/lib/names";
+import { supporterShopPath } from "@/lib/roster";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Sign up your participant", robots: { index: false, follow: false } };
@@ -23,11 +24,11 @@ export default async function JoinPage({ params, searchParams }: { params: Promi
     const row = campaign?.[0];
     if (row?.campaign_name) team = row.campaign_name;
     if (query.done && row?.team_slug) {
-      const { data: people } = await db.from("campaign_participants").select("player_first_name, player_last_name, player_slug").eq("campaign_id", row.campaign_id);
-      links = (people ?? []).map((person) => ({
-        name: `${person.player_first_name} ${person.player_last_name}`,
-        href: `${appUrl()}${sharePath(row.team_slug, person.player_slug)}`,
-      }));
+      const { data: people } = await db.from("campaign_participants").select("player_first_name, player_last_name, share_token").eq("campaign_id", row.campaign_id);
+      links = (people ?? []).flatMap((person) => person.share_token ? [{
+        name: playerDisplayName(person.player_first_name, person.player_last_name, true),
+        href: `${appUrl()}${supporterShopPath(person.share_token)}`,
+      }] : []);
     }
   }
   const done = query.done === "1";

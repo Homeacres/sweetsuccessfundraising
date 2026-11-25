@@ -1,25 +1,32 @@
-import { supabaseConfigured } from "@/lib/env";
+import Link from "next/link";
+import { appUrl, supabaseConfigured } from "@/lib/env";
+import { isUnguessableToken } from "@/lib/ledger-rules";
 import { playerDisplayName } from "@/lib/names";
-import { goalPercent, starSellers, type Seller } from "@/lib/standings";
+import { supporterShopPath } from "@/lib/roster";
+import { goalPercent, goalProgressLine, type Seller } from "@/lib/standings";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
 export const metadata = { title: "Leaderboard", robots: { index: false, follow: false } };
 
 export default async function LeaderboardPage({ params }: { params: Promise<{ parentToken: string }> }) {
   const { parentToken } = await params;
-  if (!supabaseConfigured() || parentToken.length < 32) return <Invalid />;
+  if (!supabaseConfigured() || !isUnguessableToken(parentToken)) return <Invalid />;
 
   const db = supabaseAdmin();
-  const { data: me } = await db
-    .from("campaign_participants")
-    .select("cp_id, campaign_id, campaigns(campaign_name, goal_cad, team_raised_cents)")
-    .eq("parent_token", parentToken)
+  const { data: parent } = await db.rpc("fn_parent_from_token", { p_token: parentToken });
+  const me = parentIdentity(parent);
+  if (!me) return <Invalid />;
+  const { data: campaignRow } = await db
+    .from("campaigns")
+    .select("campaign_name, goal_cad, team_raised_cents")
+    .eq("campaign_id", me.campaign_id)
     .maybeSingle();
-  const campaign = campaignOf(me?.campaigns);
-  if (!me?.campaign_id || !campaign) return <Invalid />;
+  const campaign = campaignRow;
+  if (!campaign) return <Invalid />;
   const { data: people, error } = await db
     .from("campaign_participants")
-    .select("cp_id, player_first_name, player_last_name, bags_sold, leaderboard_opt_in")
+    .select("cp_id, player_first_name, player_last_name, bags_sold, leaderboard_opt_in, share_token")
     .eq("campaign_id", me.campaign_id);
   if (error || !people) return <Invalid />;
   const sellers: Seller[] = people.map((person) => ({
@@ -29,16 +36,24 @@ export default async function LeaderboardPage({ params }: { params: Promise<{ pa
     bags: person.bags_sold,
     optedIn: Boolean(person.leaderboard_opt_in),
   }));
-  const ranked = sellers.filter((person) => person.optedIn && person.bags > 0).sort((a, b) => b.bags - a.bags);
+  const ranked = sellers.filter((person) => person.optedIn && person.bags > 0);
+  const viewer = sellers.find((person) => person.id === me.cp_id);
+  if (viewer && !ranked.some((person) => person.id === viewer.id)) ranked.push(viewer);
+  ranked.sort((a, b) => b.bags - a.bags);
   const pct = goalPercent(campaign.team_raised_cents, campaign.goal_cad);
+  const mine = people.find((person) => person.cp_id === me.cp_id);
+  const shareHref = mine?.share_token ? `${appUrl()}${supporterShopPath(mine.share_token)}` : null;
 
   return (
     <main className="page wrap">
       <p className="kicker">Private leaderboard</p>
       <h1>{campaign.campaign_name}</h1>
-      <p className="muted">{pct}% of the goal.</p>
-      <p>{starSellers(sellers).join(", ") || "No star sellers yet."}</p>
-      <div className="table-wrap">
+      <p>{goalProgressLine(campaign.team_raised_cents, campaign.goal_cad, pct)}</p>
+      <p>
+        <Link href={`/p/ledger/${parentToken}`}>Parent ledger</Link>
+        {shareHref ? <> · <a href={shareHref}>Link to share with supporters</a></> : null}
+      </p>
+      <div className="table-wrap board-wrap">
         <table>
           <thead>
             <tr><th>Rank</th><th>Participant</th><th>Bags</th></tr>
@@ -67,14 +82,11 @@ function Invalid() {
   );
 }
 
-function campaignOf(value: unknown): { campaign_name: string; goal_cad: number; team_raised_cents: number } | null {
+function parentIdentity(value: unknown): { cp_id: string; campaign_id: string } | null {
   const row = Array.isArray(value) ? value[0] : value;
   if (!row || typeof row !== "object") return null;
-  const record = row as { campaign_name?: string; goal_cad?: number; team_raised_cents?: number };
-  if (!record.campaign_name) return null;
-  return {
-    campaign_name: record.campaign_name,
-    goal_cad: record.goal_cad ?? 0,
-    team_raised_cents: record.team_raised_cents ?? 0,
-  };
+  const record = row as { cp_id?: string; campaign_id?: string };
+  if (!record.cp_id || !record.campaign_id) return null;
+  return { cp_id: record.cp_id, campaign_id: record.campaign_id };
 }
+

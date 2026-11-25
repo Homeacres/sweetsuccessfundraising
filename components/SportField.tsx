@@ -18,6 +18,7 @@ export function SportField({
 }) {
   const listId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const keyboardNav = useRef(false);
   const [open, setOpen] = useState(false);
   const selectedIndex = options.findIndex((option) => option.sport_name === value);
   const [active, setActive] = useState(selectedIndex >= 0 ? selectedIndex : 0);
@@ -26,14 +27,19 @@ export function SportField({
   useEffect(() => {
     if (!open) return;
     function onPointer(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      if (rootRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
     }
-    document.addEventListener("mousedown", onPointer);
-    return () => document.removeEventListener("mousedown", onPointer);
+    const timer = window.setTimeout(() => document.addEventListener("mousedown", onPointer), 0);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("mousedown", onPointer);
+    };
   }, [open]);
 
   useEffect(() => {
-    if (!open || !activeId) return;
+    if (!open || !keyboardNav.current || !activeId) return;
+    keyboardNav.current = false;
     document.getElementById(activeId)?.scrollIntoView({ block: "nearest" });
   }, [open, activeId]);
 
@@ -54,6 +60,7 @@ export function SportField({
         setOpen(true);
         return;
       }
+      keyboardNav.current = true;
       setActive((index) => {
         const next = event.key === "ArrowDown" ? index + 1 : index - 1;
         return Math.min(last, Math.max(0, next));
@@ -109,7 +116,9 @@ export function SportField({
         aria-labelledby={labelId}
         aria-activedescendant={open ? activeId : undefined}
         aria-required="true"
-        onClick={() => {
+        onMouseDown={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
           setActive(selectedIndex >= 0 ? selectedIndex : 0);
           setOpen((current) => !current);
         }}
@@ -129,6 +138,7 @@ export function SportField({
                 onMouseEnter={() => setActive(index)}
                 onMouseDown={(event) => {
                   event.preventDefault();
+                  event.stopPropagation();
                   choose(index);
                 }}
               >

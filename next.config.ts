@@ -2,8 +2,16 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [360, 640],
+  },
   async headers() {
     return [
+      {
+        source: "/admin/preview-links",
+        headers: [{ key: "Cache-Control", value: "no-store" }],
+      },
       {
         source: "/:path*",
         headers: [

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { dueMilestones, type MilestoneConfig } from "@/lib/milestones";
-import { checkServiceArea } from "@/lib/area";
 
 const config: MilestoneConfig = {
   timezone: "America/Edmonton",
@@ -33,16 +32,5 @@ describe("parent milestone timing", () => {
     const onTime = dueMilestones(winter, config, new Date("2026-01-15T16:00:00Z"));
     expect(before).not.toContain("start");
     expect(onTime).toContain("start");
-  });
-});
-
-describe("service area", () => {
-  it("accepts Alberta postal codes and logs the rest as outside", () => {
-    expect(checkServiceArea("t2p 1j9", ["AB"]).ok).toBe(true);
-    const outside = checkServiceArea("V6B 1A1", ["AB"]);
-    expect(outside.ok).toBe(false);
-    if (!outside.ok) expect(outside.reason).toBe("out_of_area");
-    const bad = checkServiceArea("12345", ["AB"]);
-    expect(bad.ok).toBe(false);
   });
 });

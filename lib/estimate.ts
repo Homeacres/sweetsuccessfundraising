@@ -1,3 +1,5 @@
+import { bagWord } from "@/lib/text";
+
 /** Locked planning figure. Goal is the team's share in dollars. $5 of each bag goes to the team. */
 const TEAM_SHARE_DOLLARS = 5;
 
@@ -47,10 +49,6 @@ function formatGoal(dollars: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(Math.round(dollars));
-}
-
-function bagWord(count: number): string {
-  return count === 1 ? "bag" : "bags";
 }
 
 /** Plain sentences shared by the confirmation screen and the applicant email. */

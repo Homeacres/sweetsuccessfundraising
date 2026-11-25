@@ -1,7 +1,8 @@
 import { CopyLink } from "@/components/CopyLink";
 import { appUrl, supabaseConfigured } from "@/lib/env";
 import { organizerActionSecret, signOrganizerAction, verifyOrganizerAction } from "@/lib/organizer-token";
-import { sharePath } from "@/lib/roster";
+import { playerDisplayName } from "@/lib/names";
+import { supporterShopPath } from "@/lib/roster";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Participant links", robots: { index: false, follow: false } };
@@ -38,7 +39,7 @@ export default async function RosterPage({ params }: { params: Promise<{ token: 
 
   const { data: people } = await db
     .from("campaign_participants")
-    .select("player_first_name, player_last_name, player_slug")
+    .select("player_first_name, player_last_name, share_token")
     .eq("campaign_id", campaign.campaign_id)
     .order("registered_at");
   const origin = appUrl();
@@ -51,11 +52,11 @@ export default async function RosterPage({ params }: { params: Promise<{ token: 
       <p><a href={dashboard}>Open your team dashboard</a></p>
       <div className="panel">
         {(people ?? []).length === 0 && <p>No participants yet.</p>}
-        {(people ?? []).map((person) => (
+        {(people ?? []).filter((person) => person.share_token).map((person) => (
           <CopyLink
-            key={person.player_slug}
-            label={`${person.player_first_name} ${person.player_last_name}`}
-            href={`${origin}${sharePath(campaign.team_slug, person.player_slug)}`}
+            key={person.share_token}
+            label={playerDisplayName(person.player_first_name, person.player_last_name, true)}
+            href={`${origin}${supporterShopPath(person.share_token)}`}
           />
         ))}
       </div>

@@ -37,7 +37,8 @@ describe("pilot boundaries", () => {
     expect(combined).not.toContain("save with");
     expect(combined).not.toContain("best value");
     expect(combined).not.toContain("max savings");
-    expect(combined).not.toContain("bundle");
+    expect(shop).toContain("pick any");
+    expect(shop).toContain("TEST pricing");
     expect(shop).toContain("hasMultiBagTiers");
   });
 
