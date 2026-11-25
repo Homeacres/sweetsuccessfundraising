@@ -15,7 +15,7 @@ import { formatUserDate } from "@/lib/dates";
 import { prospectFields, prospectQuoteEmail } from "@/lib/email/prospect";
 import { estimateSentences, type BagEstimate } from "@/lib/estimate";
 import { appUrl } from "@/lib/env";
-import { receiptMoneyLines } from "@/lib/gst";
+import { receiptMoneyLines, receiptSignOff } from "@/lib/gst";
 import { formatCad, formatTeamCad } from "@/lib/money";
 import { bagCount } from "@/lib/text";
 import { playerDisplayName } from "@/lib/names";
@@ -149,7 +149,8 @@ export function receiptEmail(input: {
     .map((line) => `${line.bundle ? `${line.bundle}: ` : ""}${line.player} — ${line.candy} × ${line.qty}${line.mix ? " (mix pack)" : ""} — ${formatCad(line.grossCents)}`)
     .join("\n");
   const money = receiptMoneyLines(input.totalCents, input.env);
-  const text = `Hi ${input.buyerName}, thanks for supporting ${input.team}.\n\n${lineText}\n\n${money.join("\n")}\n${bagCount(input.bags)}\n\nThere is no shipping address. Your order will be handed out by your team organizer.`;
+  const sign = receiptSignOff();
+  const text = `Hi ${input.buyerName}, thanks for supporting ${input.team}.\n\n${lineText}\n\n${money.join("\n")}\n${bagCount(input.bags)}\n\nThere is no shipping address. Your order will be handed out by your team organizer.\n\n${sign.text}`;
   const html = `<p>Hi ${escapeHtml(input.buyerName)}, thanks for supporting <strong>${escapeHtml(input.team)}</strong>.</p>
 <ul>${input.lines
     .map(
@@ -159,7 +160,8 @@ export function receiptEmail(input: {
     .join("")}</ul>
 ${money.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
 <p>${escapeHtml(bagCount(input.bags))}</p>
-<p>There is no shipping address on this order. Your order will be handed out by your team organizer.</p>`;
+<p>There is no shipping address on this order. Your order will be handed out by your team organizer.</p>
+${sign.html}`;
   const wrapped = shell("Your receipt", html, text);
   return { subject: `Receipt: ${input.team} fundraiser`, ...wrapped };
 }

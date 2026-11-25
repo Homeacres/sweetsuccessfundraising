@@ -60,6 +60,8 @@ export default async function ReceiptPage({ params }: { params: Promise<{ receip
       {receiptMoneyLines(row.total_cad ?? 0).map((line) => <p key={line}>{line}</p>)}
       <p>{bagCount(row.total_bags ?? 0)}</p>
       <p className="muted">{copy.text.includes("Received") ? copy.text.split("\n").find((line) => line.startsWith("Received")) : null}</p>
+      <p>Questions? Email <a href="mailto:hello@sweetsuccessfundraising.com">hello@sweetsuccessfundraising.com</a>.</p>
+      <p>Thanks,<br />The Sweet Success Family</p>
     </main>
   );
 }

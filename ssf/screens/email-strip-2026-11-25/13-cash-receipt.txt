@@ -5,3 +5,6 @@ Includes GST (5%) $0.57
 Sweet Success Fundraising Inc.
 1 bag
 Receipt: http://localhost:3000/r/receipt-token
+Questions? Email hello@sweetsuccessfundraising.com.
+Thanks,
+The Sweet Success Family

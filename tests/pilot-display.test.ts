@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { cashReceiptCopy } from "@/lib/cash-receipt";
 import { receiptEmail } from "@/lib/email/copy";
-import { gstIncludedCents, gstNumberLine, receiptMoneyLines } from "@/lib/gst";
+import { gstIncludedCents, gstIncludedLine, gstNumberLine, receiptMoneyLines } from "@/lib/gst";
 import { isTestOrganizerName } from "@/lib/preview-links";
 import { bagCount } from "@/lib/text";
 
@@ -10,6 +10,7 @@ describe("GST display", () => {
   it("splits included GST without a half-cent tie", () => {
     expect(gstIncludedCents(1200)).toBe(57);
     expect(gstIncludedCents(12000)).toBe(571);
+    expect(gstIncludedLine(3600)).toBe("Includes GST (5%) $1.71");
   });
 
   it("prints the number line only when the env var is set", () => {
@@ -24,7 +25,9 @@ describe("GST display", () => {
       lines: [],
       env: { SSF_GST_NUMBER: "TEST-GST" },
     });
-    expect(receipt.text).toContain("Includes GST (5%)");
+    expect(receipt.text).toContain("Includes GST (5%) $0.57");
+    expect(receipt.text).toContain("Questions? Email hello@sweetsuccessfundraising.com.");
+    expect(receipt.text).toContain("The Sweet Success Family");
     expect(receipt.text).toContain("GST number: TEST-GST");
     expect(receipt.text).toContain("Sweet Success Fundraising Inc.");
     expect(receipt.text).toContain("1 bag");
@@ -41,7 +44,8 @@ describe("GST display", () => {
       receiptToken: "a".repeat(32),
       env: {},
     });
-    expect(cash.text).toContain("Includes GST (5%)");
+    expect(cash.text).toContain("Includes GST (5%) $0.57");
+    expect(cash.text).toContain("The Sweet Success Family");
     expect(cash.text).toContain("Sweet Success Fundraising Inc.");
     expect(cash.text).toContain("1 bag");
     expect(cash.text).not.toContain("1 bags");

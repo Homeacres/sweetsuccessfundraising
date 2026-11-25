@@ -83,9 +83,7 @@ describe.skipIf(process.env.RENDER_EMAIL_STRIP !== "1")("email strip", () => {
     for (const [name, mail] of emails) {
       const combined = `${mail.subject}\n${mail.text}\n${mail.html}`;
       for (const pattern of BANNED) expect(combined, name).not.toMatch(pattern);
-      if (name !== "12-receipt" && name !== "13-cash-receipt") {
-        expect(combined, name).toContain("The Sweet Success Family");
-      }
+      expect(combined, name).toContain("The Sweet Success Family");
       writeFileSync(path.join(OUT, `${name}.html`), mail.html);
       writeFileSync(path.join(OUT, `${name}.txt`), mail.text);
       cards.push(`<section><h2>${name}</h2><p>${mail.subject}</p><iframe src="${name}.html" title="${name}"></iframe></section>`);

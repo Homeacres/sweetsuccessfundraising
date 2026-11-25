@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { gstIncludedCents } from "@/lib/gst";
+import { gstIncludedLine } from "@/lib/gst";
 import { supabaseConfigured } from "@/lib/env";
 import { formatCad } from "@/lib/money";
-import { playerDisplayName } from "@/lib/names";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { bagCount } from "@/lib/text";
 
@@ -10,7 +9,7 @@ export const metadata = { title: "Order received", robots: { index: false, follo
 
 export default async function SuccessPage({ searchParams }: { searchParams: Promise<{ session_id?: string }> }) {
   const { session_id: sessionId } = await searchParams;
-  let summary: { status: string; total: number; bags: number; team: string; participant: string } | null = null;
+  let summary: { status: string; total: number; bags: number; team: string; firstName: string } | null = null;
   if (sessionId && supabaseConfigured()) {
     const { data } = await supabaseAdmin()
       .from("orders")
@@ -22,7 +21,7 @@ export default async function SuccessPage({ searchParams }: { searchParams: Prom
         supabaseAdmin().from("campaigns").select("campaign_name").eq("campaign_id", data.campaign_id).maybeSingle(),
         supabaseAdmin()
           .from("campaign_participants")
-          .select("player_first_name, player_last_name, hide_last_name")
+          .select("player_first_name")
           .eq("cp_id", data.cp_id)
           .maybeSingle(),
       ]);
@@ -31,7 +30,7 @@ export default async function SuccessPage({ searchParams }: { searchParams: Prom
         total: data.total_cad,
         bags: data.total_bags,
         team: campaign?.campaign_name || "the team",
-        participant: playerDisplayName(player?.player_first_name || "", player?.player_last_name, true),
+        firstName: (player?.player_first_name || "").trim(),
       };
     }
   }
@@ -42,15 +41,15 @@ export default async function SuccessPage({ searchParams }: { searchParams: Prom
       {summary ? (
         <>
           <p>
-            {summary.participant
-              ? `Thanks! Your order counts toward ${summary.participant}'s total for ${summary.team}.`
+            {summary.firstName
+              ? `Thanks! Your order counts toward ${summary.firstName}'s total for ${summary.team}.`
               : `Thanks for supporting ${summary.team}.`}
           </p>
           <p>
             {summary.status === "paid" ? "Payment received." : "We're confirming the payment."}{" "}
             {bagCount(summary.bags)} · {formatCad(summary.total)}.
           </p>
-          <p>Includes GST (5%) {formatCad(gstIncludedCents(summary.total))}</p>
+          <p>{gstIncludedLine(summary.total)}</p>
           <p>A receipt is on its way to your email.</p>
         </>
       ) : (

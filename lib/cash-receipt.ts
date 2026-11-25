@@ -1,6 +1,6 @@
 import { formatUserDate } from "@/lib/dates";
 import { appUrl } from "@/lib/env";
-import { receiptMoneyLines } from "@/lib/gst";
+import { receiptMoneyLines, receiptSignOff } from "@/lib/gst";
 import { formatCad } from "@/lib/money";
 import { bagCount } from "@/lib/text";
 
@@ -63,6 +63,8 @@ export function cashReceiptCopy(input: CashReceiptInput): { subject: string; htm
     when ? `Received: ${when}.` : "",
     "",
     `Receipt: ${cashReceiptUrl(input.receiptToken)}`,
+    "",
+    receiptSignOff().text,
   ]
     .filter((line) => line !== "")
     .join("\n");
@@ -77,7 +79,8 @@ export function cashReceiptCopy(input: CashReceiptInput): { subject: string; htm
 <ul>${items}</ul>
 ${receiptMoneyLines(input.totalCents, input.env).map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
 <p>${escapeHtml(bagCount(input.bags))}</p>
-${when ? `<p>Received ${escapeHtml(when)}.</p>` : ""}`;
+${when ? `<p>Received ${escapeHtml(when)}.</p>` : ""}
+${receiptSignOff().html}`;
   return { subject: `Cash receipt: ${input.team}`, html, text };
 }
 
